@@ -1,186 +1,226 @@
-/* ============================================================
-   NOVA — a fully working AI chat.
-   Every reply comes live from the Claude API. Nothing is faked.
-   ============================================================ */
+/* ============ NOVA — script.js (v2, powered by Puter.js) ============
+   Real Claude on a real website. No API key needed — Puter.js handles it.
+   Each visitor signs in to a free Puter account the first time they chat.
+==================================================================== */
 
-const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL   = "claude-sonnet-4-6";
+const MODEL = "claude-sonnet-4-6";
 
-const SYSTEM = `You are Nova — a sharp, warm AI assistant living inside a sleek chat website.
-You are excellent at programming: when asked for code, write complete, working code inside fenced markdown blocks with the correct language tag.
-You are also great at math, writing, explaining hard ideas simply, and brainstorming.
-Be direct and friendly. Always format responses in Markdown. Match your length to the task — short for simple questions, thorough for complex ones.`;
+const SYSTEM_PROMPT =
+  "You are Nova, a sharp, friendly AI living on the FreshFun website. " +
+  "You are great at explaining things simply and at writing and debugging code. " +
+  "Always put code inside markdown code fences with the language name. " +
+  "Keep answers clear and not too long unless the person asks for more.";
 
-const messages = [];          // full conversation memory {role, content}
-let busy = false;
-
-const thread   = document.getElementById("thread");
-const scroller = document.getElementById("scroller");
-const input    = document.getElementById("input");
-const sendBtn  = document.getElementById("send");
-
-/* ---------- hero / empty state ---------- */
-function buildHero(){
-  const h = document.createElement("div");
-  h.className = "hero";
-  h.id = "hero";
-  h.innerHTML = `
-    <h1>N<span class="star" aria-label="O"></span>VA</h1>
-    <p>A real AI, live in your browser. It writes code, fixes bugs, explains anything, and remembers the whole conversation.</p>
+const WELCOME_HTML = `
+  <div class="welcome" id="welcome">
+    <span class="orb orb-lg" aria-hidden="true"></span>
+    <h1>Hey — I'm Nova.</h1>
+    <p class="sub">A real AI, live on this site. Ask about code, space, homework, anything.</p>
     <div class="chips">
-      <button class="chip">🐍 Code a snake game in Python</button>
-      <button class="chip">🕳️ Explain black holes simply</button>
-      <button class="chip">🐞 Find the bug: <code>for(i=0;i<10;i--)</code></button>
-      <button class="chip">✍️ Write a two-sentence horror story</button>
-    </div>`;
-  h.querySelectorAll(".chip").forEach(c =>
-    c.addEventListener("click", () => sendMessage(c.textContent.trim()))
-  );
-  thread.appendChild(h);
-}
-buildHero();
+      <button class="chip" type="button">🪐 Explain black holes like I'm 10</button>
+      <button class="chip" type="button">🐞 Find the bug: for(i=0;i&lt;10;i--)</button>
+      <button class="chip" type="button">✨ Invent a tiny web game idea</button>
+    </div>
+    <p class="hint">Your first message opens a quick free Puter sign-in — that's what keeps Nova free.</p>
+  </div>`;
 
-/* ---------- rendering helpers ---------- */
-function scrollDown(){
-  scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
-}
+// ---------- state ----------
+let history = [];        // [{role:"user"|"assistant", content:string}]
+let streaming = false;
+let sessionId = 0;       // bumps on "new chat" so old streams stop cleanly
 
-function renderMarkdown(text){
-  if (window.marked && window.DOMPurify){
-    marked.setOptions({ gfm: true, breaks: true });
-    return DOMPurify.sanitize(marked.parse(text));
-  }
-  const esc = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  return "<p>" + esc.replace(/\n/g,"<br>") + "</p>";
+// ---------- elements ----------
+const chat    = document.getElementById("chat");
+const input   = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const newBtn  = document.getElementById("newChatBtn");
+
+// ---------- helpers ----------
+function esc(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function enhance(el){
-  el.querySelectorAll("pre").forEach(pre => {
-    const code = pre.querySelector("code");
-    if (code && window.hljs){ try { hljs.highlightElement(code); } catch(e){} }
-    const btn = document.createElement("button");
-    btn.className = "copy-btn";
-    btn.textContent = "copy";
-    btn.addEventListener("click", () => {
-      navigator.clipboard.writeText(code ? code.innerText : pre.innerText);
-      btn.textContent = "copied ✓";
-      setTimeout(() => btn.textContent = "copy", 1400);
-    });
-    pre.appendChild(btn);
+function nearBottom() {
+  return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 150;
+}
+
+function scrollToEnd() {
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function setBusy(b) {
+  streaming = b;
+  sendBtn.disabled = b;
+}
+
+// ---------- tiny markdown renderer (safe: escapes all HTML) ----------
+function renderMarkdown(src, live) {
+  let s = src;
+
+  // While streaming, temporarily close an unfinished code fence
+  const fenceCount = (s.match(/```/g) || []).length;
+  if (live && fenceCount % 2 === 1) s += "\n```";
+
+  // Pull code blocks out first
+  const blocks = [];
+  s = s.replace(/```(\w*)[ \t]*\n?([\s\S]*?)```/g, (m, lang, code) => {
+    blocks.push({ lang: lang || "code", code: code.replace(/\n$/, "") });
+    return "\u0000B" + (blocks.length - 1) + "\u0000";
   });
-  el.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+
+  // Inline formatting on the rest
+  let html = esc(s)
+    .replace(/`([^`\n]+)`/g, '<code class="inline">$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|\s)\*(\S[^*\n]*?\S|\S)\*(?=[\s.,!?)]|$)/g, "$1<em>$2</em>")
+    .replace(/^#{1,4}\s+(.+)$/gm, '<span class="md-h">$1</span>')
+    .replace(/^[-*]\s+(.+)$/gm, '<span class="md-li">$1</span>');
+
+  // Paragraphs
+  html = html
+    .split(/\n{2,}/)
+    .map(p => "<p>" + p.replace(/\n/g, "<br>") + "</p>")
+    .join("");
+
+  // Put code blocks back
+  html = html.replace(/(?:<p>)?\u0000B(\d+)\u0000(?:<\/p>)?/g, (m, i) => {
+    const b = blocks[+i];
+    return (
+      '<div class="code-block">' +
+        '<div class="code-head"><span class="code-lang">' + esc(b.lang) + "</span>" +
+        '<button class="copy-btn" type="button">Copy</button></div>' +
+        "<pre><code>" + esc(b.code) + "</code></pre>" +
+      "</div>"
+    );
+  });
+
+  return html;
 }
 
-function addUser(text){
-  const d = document.createElement("div");
-  d.className = "msg user";
-  d.textContent = text;
-  thread.appendChild(d);
-  scrollDown();
+// ---------- building messages ----------
+function addUserBubble(text) {
+  const el = document.createElement("div");
+  el.className = "msg user";
+  el.textContent = text;
+  chat.appendChild(el);
+  scrollToEnd();
 }
 
-function addBot(text){
-  const d = document.createElement("div");
-  d.className = "msg bot";
-  d.innerHTML = `<div class="star" aria-hidden="true"></div>
-                 <div class="content"><div class="who">Nova</div></div>`;
-  const body = document.createElement("div");
-  body.innerHTML = renderMarkdown(text);
-  enhance(body);
-  d.querySelector(".content").appendChild(body);
-  thread.appendChild(d);
-  scrollDown();
+function addAssistantShell() {
+  const el = document.createElement("div");
+  el.className = "msg ai";
+  el.innerHTML =
+    '<span class="orb" aria-hidden="true"></span>' +
+    '<div class="msg-inner"><div class="msg-body streaming">' +
+    '<span class="dots"><i></i><i></i><i></i></span>' +
+    "</div></div>";
+  chat.appendChild(el);
+  scrollToEnd();
+  return el;
 }
 
-function addThinking(){
-  const d = document.createElement("div");
-  d.className = "msg bot";
-  d.innerHTML = `<div class="star thinking" aria-hidden="true"></div>
-                 <div class="content"><div class="who">Nova</div>
-                 <div class="thinking-label">thinking</div></div>`;
-  thread.appendChild(d);
-  scrollDown();
-  return d;
+function friendlyError(err) {
+  const msg = String((err && (err.message || err.error || err)) || "").toLowerCase();
+  if (msg.includes("auth") || msg.includes("cancel") || msg.includes("sign") || msg.includes("popup")) {
+    return "Sign-in was closed — hit Retry and finish the quick free Puter sign-in.";
+  }
+  if (msg.includes("load") || msg.includes("network") || msg.includes("fetch") || !navigator.onLine) {
+    return "Load failed — check your connection and try again.";
+  }
+  return "Something glitched between here and the stars. Try again.";
 }
 
-function addError(msg){
-  const d = document.createElement("div");
-  d.className = "msg bot err";
-  d.innerHTML = `<div class="star" aria-hidden="true" style="filter:grayscale(.6)"></div>
-                 <div class="content"><div class="who">Signal lost</div></div>`;
-  const p = document.createElement("p");
-  p.textContent = msg + " — check your connection and try again.";
-  const retry = document.createElement("button");
-  retry.className = "retry";
-  retry.textContent = "Retry";
-  retry.addEventListener("click", () => { d.remove(); requestReply(); });
-  d.querySelector(".content").append(p, retry);
-  thread.appendChild(d);
-  scrollDown();
+function addErrorBlock(err) {
+  const el = document.createElement("div");
+  el.className = "msg ai error";
+  el.innerHTML =
+    '<span class="orb" aria-hidden="true"></span>' +
+    '<div class="msg-inner">' +
+      '<div class="err-label">SIGNAL LOST</div>' +
+      '<p class="err-text">' + esc(friendlyError(err)) + "</p>" +
+      '<button class="retry-btn" type="button">Retry</button>' +
+    "</div>";
+  el.querySelector(".retry-btn").addEventListener("click", () => {
+    el.remove();
+    requestReply();
+  });
+  chat.appendChild(el);
+  scrollToEnd();
 }
 
-/* ---------- the actual AI call ---------- */
-async function requestReply(){
-  busy = true;
-  sendBtn.disabled = true;
-  const typing = addThinking();
+// ---------- talking to the AI ----------
+async function requestReply() {
+  const myId = sessionId;
+  const shell = addAssistantShell();
+  const body = shell.querySelector(".msg-body");
+  setBusy(true);
 
+  let full = "";
   try {
-    // keep the last 40 turns; history must start on a user turn
-    let history = messages.slice(-40);
-    while (history.length && history[0].role !== "user") history.shift();
-
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1000,
-        system: SYSTEM,
-        messages: history
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok || data.error){
-      throw new Error(data?.error?.message || "Request failed (" + res.status + ")");
+    if (typeof puter === "undefined") {
+      throw new Error("network: Puter.js did not load");
     }
 
-    const reply = (data.content || [])
-      .map(b => b.type === "text" ? b.text : "")
-      .filter(Boolean)
-      .join("\n\n") || "…";
+    const stream = await puter.ai.chat(
+      [{ role: "system", content: SYSTEM_PROMPT }, ...history],
+      { model: MODEL, stream: true }
+    );
 
-    messages.push({ role: "assistant", content: reply });
-    typing.remove();
-    addBot(reply);
+    for await (const part of stream) {
+      if (myId !== sessionId) return; // user started a new chat
+      const t = (part && part.text) ? part.text : "";
+      if (t) {
+        full += t;
+        const stick = nearBottom();
+        body.innerHTML = renderMarkdown(full, true);
+        if (stick) scrollToEnd();
+      }
+    }
 
-  } catch (err){
-    typing.remove();
-    addError(err.message || "Something went wrong");
+    if (myId !== sessionId) return;
+    if (!full.trim()) throw new Error("empty response");
+
+    body.classList.remove("streaming");
+    body.innerHTML = renderMarkdown(full, false);
+    history.push({ role: "assistant", content: full });
+  } catch (err) {
+    if (myId !== sessionId) return;
+    console.error("Nova error:", err);
+    shell.remove();
+    addErrorBlock(err);
   } finally {
-    busy = false;
-    sendBtn.disabled = false;
-    input.focus();
+    if (myId === sessionId) setBusy(false);
   }
 }
 
-function sendMessage(text){
-  text = (text || "").trim();
-  if (!text || busy) return;
-  document.getElementById("hero")?.remove();
-  addUser(text);
-  messages.push({ role: "user", content: text });
+function sendMessage(text) {
+  const clean = text.trim();
+  if (!clean || streaming) return;
+
+  const welcome = document.getElementById("welcome");
+  if (welcome) welcome.remove();
+
+  history.push({ role: "user", content: clean });
+  addUserBubble(clean);
   input.value = "";
   input.style.height = "auto";
   requestReply();
 }
 
-/* ---------- composer wiring ---------- */
+// ---------- new chat ----------
+function newChat() {
+  sessionId++;
+  history = [];
+  setBusy(false);
+  chat.innerHTML = WELCOME_HTML;
+  input.focus();
+}
+
+// ---------- events ----------
 sendBtn.addEventListener("click", () => sendMessage(input.value));
 
 input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey){
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     sendMessage(input.value);
   }
@@ -188,14 +228,25 @@ input.addEventListener("keydown", e => {
 
 input.addEventListener("input", () => {
   input.style.height = "auto";
-  input.style.height = Math.min(input.scrollHeight, 170) + "px";
+  input.style.height = Math.min(input.scrollHeight, 160) + "px";
 });
 
-document.getElementById("newChat").addEventListener("click", () => {
-  messages.length = 0;
-  thread.innerHTML = "";
-  buildHero();
-  input.focus();
+newBtn.addEventListener("click", newChat);
+
+// suggestion chips + copy buttons (delegated)
+chat.addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { sendMessage(chip.textContent); return; }
+
+  const btn = e.target.closest(".copy-btn");
+  if (btn) {
+    const code = btn.closest(".code-block").querySelector("code");
+    navigator.clipboard.writeText(code.innerText).then(() => {
+      btn.textContent = "Copied ✓";
+      setTimeout(() => (btn.textContent = "Copy"), 1400);
+    });
+  }
 });
 
-input.focus();
+// ---------- go ----------
+chat.innerHTML = WELCOME_HTML;
