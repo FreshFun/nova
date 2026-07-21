@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0A0E1A">
-<meta name="description" content="NOVA — a real AI chat, live on FreshFun.">
-<title>NOVA — Innovating AI</title>
+<meta name="theme-color" content="#05070F">
+<meta name="description" content="QUANTUM — a real AI chat with two engines, live on FreshFun.">
+<title>QUANTUM — a real AI chat</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,20 +13,26 @@
 
 <link rel="stylesheet" href="style.css">
 
-<!-- This is the engine: free, keyless AI that works on any website -->
+<!-- Engine A: free, keyless Claude access -->
 <script src="https://js.puter.com/v2/"></script>
 </head>
-<body>
+<body class="mode-quantum">
 
-<div class="stars" aria-hidden="true"></div>
+<div class="grid" aria-hidden="true"></div>
 
 <header class="topbar">
   <div class="brand">
-    <span class="orb orb-sm" aria-hidden="true"></span>
-    <span class="brand-name">NOVA</span>
+    <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>
+    </svg>
+    <span class="brand-name">QUANTUM</span>
   </div>
+
   <div class="topbar-right">
-    <span class="model-badge"><span class="dot" aria-hidden="true"></span>Nova&nbsp;Energy 1.0</span>
+    <div class="mode-toggle" role="group" aria-label="Choose engine">
+      <button id="modeQuantum" class="mode-btn active" type="button">Quantum<span class="v">&nbsp;2.0</span></button>
+      <button id="modeEnergy" class="mode-btn" type="button">Energy<span class="v">&nbsp;1.0</span></button>
+    </div>
     <button id="newChatBtn" class="icon-btn" type="button" title="New chat" aria-label="Start a new chat">+</button>
   </div>
 </header>
@@ -35,13 +41,13 @@
 
 <div class="composer-wrap">
   <div class="composer">
-    <textarea id="input" rows="1" placeholder="Ask Nova anything…" aria-label="Message Nova"></textarea>
+    <textarea id="input" rows="1" placeholder="Ask Quantum anything…" aria-label="Message Quantum"></textarea>
     <button id="sendBtn" class="send-btn" type="button" aria-label="Send message">↑</button>
   </div>
-  <p class="tagline">AI — powered by Nova</p>
+  <p class="tagline" id="tagline">Quantum 2.0 — powered by Claude</p>
 </div>
 
-<noscript><p class="noscript">Nova needs JavaScript to think. Turn it on and reload.</p></noscript>
+<noscript><p class="noscript">Quantum needs JavaScript to think. Turn it on and reload.</p></noscript>
 
 <script src="script.js"></script>
 </body>
