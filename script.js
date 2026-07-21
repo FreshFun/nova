@@ -6,6 +6,7 @@
 ============================================== */
 
 const MODEL_Q = "claude-sonnet-4-6";
+const MODEL_E = "meta-llama/llama-4-maverick"; // lighter open-source backup model
 
 const SYSTEM_PROMPT =
   "You are Quantum, a sharp, electric-minded AI living on the FreshFun website. " +
@@ -23,7 +24,7 @@ const WELCOME_HTML = `
       <button class="chip" type="button">🐞 Find the bug: for(i=0;i&lt;10;i--)</button>
       <button class="chip" type="button">🎮 Invent a tiny web game idea</button>
     </div>
-    <p class="hint">Quantum 2.0 asks for a quick free Puter sign-in on your first message. Energy 1.0 needs nothing.</p>
+    <p class="hint">Your first message opens a quick free sign-in — that unlocks both engines, no separate account for Energy 1.0.</p>
   </div>`;
 
 // ---------- state ----------
@@ -132,7 +133,10 @@ function isOutOfJuice(msg) {
 function friendlyError(err) {
   const msg = String((err && (err.message || err.error || err)) || "").toLowerCase();
   if (mode === "quantum" && isOutOfJuice(msg)) {
-    return "Quantum 2.0 is out of juice for this account — switch to Energy 1.0, or top up in Puter.";
+    return "Quantum 2.0 is out of juice for this account — try Energy 1.0, it's a lighter model that costs less.";
+  }
+  if (mode === "energy" && isOutOfJuice(msg)) {
+    return "Both engines run low together since they share one account — try again shortly, or add credit in Puter.";
   }
   if (msg.includes("auth") || msg.includes("cancel") || msg.includes("sign") || msg.includes("popup")) {
     return "Sign-in was closed — hit Retry and finish the quick free Puter sign-in.";
@@ -187,35 +191,20 @@ async function askQuantum(onToken, cancelled) {
   }
 }
 
-// ---------- engine B: Energy 1.0 (Pollinations, keyless) ----------
-function buildEnergyPrompt() {
-  let convo = "";
-  for (const m of history.slice(-8)) {
-    convo += (m.role === "user" ? "User: " : "Quantum: ") + m.content + "\n";
+// ---------- engine B: Energy 1.0 (lighter open-source model, same free Puter sign-in) ----------
+async function askEnergy(onToken, cancelled) {
+  if (typeof puter === "undefined") {
+    throw new Error("network: Puter.js did not load");
   }
-  if (convo.length > 1600) convo = convo.slice(-1600);
-  return SYSTEM_PROMPT + "\n\nConversation so far:\n" + convo + "\nReply as Quantum:";
-}
-
-async function askEnergy() {
-  const prompt = encodeURIComponent(buildEnergyPrompt());
-  const urls = [
-    "https://gen.pollinations.ai/text/" + prompt,
-    "https://text.pollinations.ai/" + prompt
-  ];
-  let lastErr = null;
-  for (const u of urls) {
-    try {
-      const res = await fetch(u);
-      if (!res.ok) throw new Error("network " + res.status);
-      const text = (await res.text()).trim();
-      if (!text) throw new Error("empty response");
-      return text;
-    } catch (e) {
-      lastErr = e;
-    }
+  const stream = await puter.ai.chat(
+    [{ role: "system", content: SYSTEM_PROMPT }, ...history],
+    { model: MODEL_E, stream: true }
+  );
+  for await (const part of stream) {
+    if (cancelled()) return;
+    const t = (part && part.text) ? part.text : "";
+    if (t) onToken(t);
   }
-  throw lastErr || new Error("network");
 }
 
 // ---------- the reply loop ----------
@@ -234,12 +223,11 @@ async function requestReply() {
   };
 
   try {
+    const cancelled = () => myId !== sessionId;
     if (mode === "quantum") {
-      await askQuantum(onToken, () => myId !== sessionId);
+      await askQuantum(onToken, cancelled);
     } else {
-      const text = await askEnergy();
-      if (myId !== sessionId) return;
-      onToken(text);
+      await askEnergy(onToken, cancelled);
     }
 
     if (myId !== sessionId) return;
@@ -282,7 +270,7 @@ function setMode(next, silent) {
   eBtn.classList.toggle("active", mode === "energy");
   tagline.textContent = mode === "quantum"
     ? "Quantum 2.0 — powered by Claude"
-    : "Energy 1.0 — free backup engine";
+    : "Energy 1.0 — lighter backup engine";
   try { localStorage.setItem("quantum-mode", mode); } catch (e) {}
   if (!silent && !document.getElementById("welcome")) addModeNote();
 }
