@@ -1,325 +1,857 @@
-/* ============ QUANTUM — script.js ============
-   Two engines, one chat:
-   • Quantum 2.0 — Claude via Puter.js (smart; visitors do a one-time free Puter sign-in)
-   • Energy 1.0  — Pollinations (basic; totally keyless, no sign-in at all)
-   If Quantum runs out of juice, the error offers a one-tap switch to Energy.
-============================================== */
+/* =========================================================
+   PULSE ASCENT — a timing tower
+   Difficulty chart colors follow the EToH / JToH chart.
+   No assets: music and charts are generated at runtime.
+   ========================================================= */
+'use strict';
 
-const MODEL_Q = "claude-sonnet-4-6";
-const MODEL_E = "meta-llama/llama-4-maverick"; // lighter open-source backup model
+/* ---------------------------------------------------------
+   1. THE DIFFICULTY CHART
+   --------------------------------------------------------- */
+const DIFFICULTIES = [
+  { id:'effortless',   name:'Effortless',   color:'#8AAB85', band:'Standard',
+    blurb:'The bottom rung. A beat, a key, and enough room to think between them.' },
+  { id:'easy',         name:'Easy',         color:'#5B9A4C', band:'Standard',
+    blurb:'Two keys, steady eighths, generous windows. Where everyone actually starts.' },
+  { id:'medium',       name:'Medium',       color:'#FFB000', band:'Standard',
+    blurb:'Three lanes. The rests stop being polite and the tempo stops waiting.' },
+  { id:'hard',         name:'Hard',         color:'#AA5500', band:'Standard',
+    blurb:'Full four-lane layout. Short bursts arrive before your hands are ready.' },
+  { id:'difficult',    name:'Difficult',    color:'#C4281C', band:'Standard',
+    blurb:'Sixteenths in every phrase and a hit window that no longer forgives a shrug.' },
+  { id:'challenging',  name:'Challenging',  color:'#750000', band:'Standard',
+    blurb:'Jumps stacked on streams. Recovering a dropped combo costs half the chart.' },
+  { id:'intense',      name:'Intense',      color:'#1B2A35', band:'Standard',
+    blurb:'Machine tempo. Nothing is decorative anymore — every note is load-bearing.' },
+  { id:'remorseless',  name:'Remorseless',  color:'#FF00BF', band:'Standard',
+    blurb:'The last standard rung. Dense, bright, and completely uninterested in your wrists.' },
+  { id:'insane',       name:'Insane',       color:'#0000FF', band:'Soul Crushing',
+    blurb:'Soul Crushing begins. Timing windows are now measured in single frames.' },
+  { id:'extreme',      name:'Extreme',      color:'#2154B9', band:'Soul Crushing',
+    blurb:'Continuous streams with jump anchors. There is no bar to breathe on.' },
+  { id:'terrifying',   name:'Terrifying',   color:'#00FFFF', band:'Soul Crushing',
+    blurb:'Fast enough that reading ahead and reacting become different skills.' },
+  { id:'catastrophic', name:'Catastrophic', color:'#FFFFFF', band:'Soul Crushing',
+    blurb:'A wall of white. The chart stops being a rhythm and becomes a texture.' },
+  { id:'horrific',     name:'Horrific',     color:'#A75E9B', band:'Soul Crushing',
+    blurb:'Beyond reasonable. Built to be looked at more than it is ever cleared.' },
+  { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Soul Crushing',
+    blurb:'The top of the canon chart. Good luck. Practice mode exists for a reason.' },
+  { id:'nil',          name:'nil',          color:'#635F62', band:'Joke',
+    blurb:'Not a real difficulty. Not a real chart. Press keys and see what happens.' },
+];
 
-const SYSTEM_PROMPT =
-  "You are Quantum, a sharp, electric-minded AI living on the FreshFun website. " +
-  "You are great at explaining things simply and at writing and debugging code. " +
-  "Always put code inside markdown code fences with the language name. " +
-  "Keep answers clear and not too long unless the person asks for more.";
+/* Two pulses per difficulty. Easy is the pair you asked for. */
+const PULSES = {
+  effortless:   [['Pulse of First Steps','PoFS'],        ['Pulse of Gentle Rhythm','PoGR']],
+  easy:         [['Pulse of a New Beginning','PoFAB'],   ['Pulse of Easy Timing','PoET']],
+  medium:       [['Pulse of Steady Hands','PoSH'],       ['Pulse of Middle Ground','PoMG']],
+  hard:         [['Pulse of Rising Tempo','PoRT'],       ['Pulse of Harsh Truth','PoHT']],
+  difficult:    [['Pulse of Divided Focus','PoDF'],      ['Pulse of the Broken Metronome','PoBM']],
+  challenging:  [['Pulse of Crimson Cadence','PoCC'],    ['Pulse of Unyielding Beat','PoUB']],
+  intense:      [['Pulse of Iron Discipline','PoID'],    ['Pulse of Silent Machinery','PoSM']],
+  remorseless:  [['Pulse of Neon Malice','PoNM'],        ['Pulse of Endless Repetition','PoER']],
+  insane:       [['Pulse of Deep Blue','PoDB'],          ['Pulse of Shattered Sanity','PoSS']],
+  extreme:      [['Pulse of Astral Drift','PoAD'],       ['Pulse of Violent Currents','PoVC']],
+  terrifying:   [['Pulse of Frozen Nerves','PoFN'],      ['Pulse of Glacial Terror','PoGT']],
+  catastrophic: [['Pulse of Blinding White','PoBW'],     ['Pulse of Total Collapse','PoTC']],
+  horrific:     [['Pulse of Violet Dread','PoVD'],       ['Pulse of Hollow Echoes','PoHE']],
+  unreal:       [['Pulse of Impossible Geometry','PoIG'],['Pulse of the Void Beyond','PoVB']],
+  nil:          [['Pulse of nil','Ponil'],               ['Pulse of Nothing At All','PoNAA']],
+};
 
-const WELCOME_HTML = `
-  <div class="welcome" id="welcome">
-    <span class="core core-lg" aria-hidden="true"></span>
-    <h1>Hey — I'm Quantum.</h1>
-    <p class="sub">Two engines, one chat. Quantum 2.0 runs on Claude for the smart stuff; Energy 1.0 is the free backup. Flip between them up top.</p>
-    <div class="chips">
-      <button class="chip" type="button">⚡ Explain electricity like I'm 10</button>
-      <button class="chip" type="button">🐞 Find the bug: for(i=0;i&lt;10;i--)</button>
-      <button class="chip" type="button">🎮 Invent a tiny web game idea</button>
-    </div>
-    <p class="hint">Your first message opens a quick free sign-in — that unlocks both engines, no separate account for Energy 1.0.</p>
-  </div>`;
+/* Per-tier tuning. index = position on the chart. */
+const BPMS = [92, 104, 116, 126, 138, 148, 158, 168, 178, 188, 198, 208, 218, 230, 262];
 
-// ---------- state ----------
-let mode = "quantum";    // "quantum" | "energy"
-let history = [];        // [{role:"user"|"assistant", content:string}]
-let streaming = false;
-let sessionId = 0;
-
-// ---------- elements ----------
-const chat    = document.getElementById("chat");
-const input   = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const newBtn  = document.getElementById("newChatBtn");
-const qBtn    = document.getElementById("modeQuantum");
-const eBtn    = document.getElementById("modeEnergy");
-const tagline = document.getElementById("tagline");
-
-// ---------- helpers ----------
-function esc(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-function nearBottom() {
-  return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 150;
-}
-function scrollToEnd() {
-  chat.scrollTop = chat.scrollHeight;
-}
-function setBusy(b) {
-  streaming = b;
-  sendBtn.disabled = b;
-}
-
-// ---------- tiny markdown renderer (safe: escapes all HTML) ----------
-function renderMarkdown(src, live) {
-  let s = src;
-
-  const fenceCount = (s.match(/```/g) || []).length;
-  if (live && fenceCount % 2 === 1) s += "\n```";
-
-  const blocks = [];
-  s = s.replace(/```(\w*)[ \t]*\n?([\s\S]*?)```/g, (m, lang, code) => {
-    blocks.push({ lang: lang || "code", code: code.replace(/\n$/, "") });
-    return "\u0000B" + (blocks.length - 1) + "\u0000";
-  });
-
-  let html = esc(s)
-    .replace(/`([^`\n]+)`/g, '<code class="inline">$1</code>')
-    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|\s)\*(\S[^*\n]*?\S|\S)\*(?=[\s.,!?)]|$)/g, "$1<em>$2</em>")
-    .replace(/^#{1,4}\s+(.+)$/gm, '<span class="md-h">$1</span>')
-    .replace(/^[-*]\s+(.+)$/gm, '<span class="md-li">$1</span>');
-
-  html = html
-    .split(/\n{2,}/)
-    .map(p => "<p>" + p.replace(/\n/g, "<br>") + "</p>")
-    .join("");
-
-  html = html.replace(/(?:<p>)?\u0000B(\d+)\u0000(?:<\/p>)?/g, (m, i) => {
-    const b = blocks[+i];
-    return (
-      '<div class="code-block">' +
-        '<div class="code-head"><span class="code-lang">' + esc(b.lang) + "</span>" +
-        '<button class="copy-btn" type="button">Copy</button></div>' +
-        "<pre><code>" + esc(b.code) + "</code></pre>" +
-      "</div>"
-    );
-  });
-
-  return html;
+function laneCount(t) {
+  if (t <= 0) return 1;   // Effortless
+  if (t === 1) return 2;  // Easy
+  if (t === 2) return 3;  // Medium
+  return 4;               // Hard and up
 }
 
-// ---------- message building ----------
-function addUserBubble(text) {
-  const el = document.createElement("div");
-  el.className = "msg user";
-  el.textContent = text;
-  chat.appendChild(el);
-  scrollToEnd();
+function levelSpec(tier, variant) {
+  const [name, abbr] = PULSES[DIFFICULTIES[tier].id][variant];
+  const bpm = BPMS[tier] + variant * 6;
+  const f = tier / (DIFFICULTIES.length - 1);
+  return {
+    name, abbr, tier, variant, bpm,
+    lanes: laneCount(tier),
+    bars: 16 + Math.round(f * 12) + variant * 2,
+    approach: Math.max(0.42, 1.5 - tier * 0.065 - variant * 0.02),
+    windowScale: Math.max(0.42, 1.25 - tier * 0.055 - variant * 0.015),
+    intensity: Math.min(1, f + variant * 0.05),
+  };
 }
 
-function addAssistantShell() {
-  const el = document.createElement("div");
-  el.className = "msg ai";
-  el.innerHTML =
-    '<span class="core" aria-hidden="true"></span>' +
-    '<div class="msg-inner"><div class="msg-body streaming">' +
-    '<span class="dots"><i></i><i></i><i></i></span>' +
-    "</div></div>";
-  chat.appendChild(el);
-  scrollToEnd();
-  return el;
+const LEVELS = {};
+DIFFICULTIES.forEach((d, t) => { LEVELS[d.id] = [levelSpec(t, 0), levelSpec(t, 1)]; });
+
+/* ---------------------------------------------------------
+   2. CHART GENERATION
+   --------------------------------------------------------- */
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function pick(rng, table) {
+  let total = 0;
+  for (const k in table) total += table[k];
+  let r = rng() * total;
+  for (const k in table) { r -= table[k]; if (r <= 0) return k; }
+  return Object.keys(table)[0];
 }
 
-function addModeNote() {
-  const el = document.createElement("div");
-  el.className = "mode-note";
-  el.textContent = mode === "quantum" ? "⚡ SWITCHED TO QUANTUM 2.0" : "🔋 SWITCHED TO ENERGY 1.0";
-  chat.appendChild(el);
-  scrollToEnd();
-}
+function generateChart(spec) {
+  const rng = mulberry32(hashStr(spec.name + spec.bpm));
+  const f = spec.intensity;
+  const lanes = spec.lanes;
+  const notes = [];
+  let lane = Math.floor(lanes / 2);
 
-function isOutOfJuice(msg) {
-  return /insufficient|funds|credit|balance|usage|quota|limit|402/.test(msg);
-}
-
-function friendlyError(err) {
-  const msg = String((err && (err.message || err.error || err)) || "").toLowerCase();
-  if (mode === "quantum" && isOutOfJuice(msg)) {
-    return "Quantum 2.0 is out of juice for this account — try Energy 1.0, it's a lighter model that costs less.";
-  }
-  if (mode === "energy" && isOutOfJuice(msg)) {
-    return "Both engines run low together since they share one account — try again shortly, or add credit in Puter.";
-  }
-  if (msg.includes("auth") || msg.includes("cancel") || msg.includes("sign") || msg.includes("popup")) {
-    return "Sign-in was closed — hit Retry and finish the quick free Puter sign-in.";
-  }
-  if (msg.includes("load") || msg.includes("network") || msg.includes("fetch") || !navigator.onLine) {
-    return "Load failed — check your connection and try again.";
-  }
-  return "Something shorted out mid-thought. Try again.";
-}
-
-function addErrorBlock(err) {
-  const el = document.createElement("div");
-  el.className = "msg ai error";
-  const offerSwitch = mode === "quantum";
-  el.innerHTML =
-    '<span class="core" aria-hidden="true"></span>' +
-    '<div class="msg-inner">' +
-      '<div class="err-label">POWER LOSS</div>' +
-      '<p class="err-text">' + esc(friendlyError(err)) + "</p>" +
-      '<div class="err-actions">' +
-        '<button class="retry-btn" type="button">Retry</button>' +
-        (offerSwitch ? '<button class="alt-btn" type="button">Use Energy 1.0</button>' : "") +
-      "</div>" +
-    "</div>";
-  el.querySelector(".retry-btn").addEventListener("click", () => {
-    el.remove();
-    requestReply();
-  });
-  const alt = el.querySelector(".alt-btn");
-  if (alt) alt.addEventListener("click", () => {
-    el.remove();
-    setMode("energy");
-    requestReply();
-  });
-  chat.appendChild(el);
-  scrollToEnd();
-}
-
-// ---------- engine A: Quantum 2.0 (Claude via Puter) ----------
-async function askQuantum(onToken, cancelled) {
-  if (typeof puter === "undefined") {
-    throw new Error("network: Puter.js did not load");
-  }
-  const stream = await puter.ai.chat(
-    [{ role: "system", content: SYSTEM_PROMPT }, ...history],
-    { model: MODEL_Q, stream: true }
-  );
-  for await (const part of stream) {
-    if (cancelled()) return;
-    const t = (part && part.text) ? part.text : "";
-    if (t) onToken(t);
-  }
-}
-
-// ---------- engine B: Energy 1.0 (lighter open-source model, same free Puter sign-in) ----------
-async function askEnergy(onToken, cancelled) {
-  if (typeof puter === "undefined") {
-    throw new Error("network: Puter.js did not load");
-  }
-  const stream = await puter.ai.chat(
-    [{ role: "system", content: SYSTEM_PROMPT }, ...history],
-    { model: MODEL_E, stream: true }
-  );
-  for await (const part of stream) {
-    if (cancelled()) return;
-    const t = (part && part.text) ? part.text : "";
-    if (t) onToken(t);
-  }
-}
-
-// ---------- the reply loop ----------
-async function requestReply() {
-  const myId = sessionId;
-  const shell = addAssistantShell();
-  const body = shell.querySelector(".msg-body");
-  setBusy(true);
-
-  let full = "";
-  const onToken = t => {
-    full += t;
-    const stick = nearBottom();
-    body.innerHTML = renderMarkdown(full, true);
-    if (stick) scrollToEnd();
+  const weights = {
+    rest:       Math.max(0.04, 0.30 - f * 0.28),
+    quarters:   Math.max(0.06, 0.46 - f * 0.40),
+    eighths:    0.24 + f * 0.20,
+    sixteenths: Math.max(0, f * 0.46 - 0.04),
+    jumps:      Math.max(0, f * 0.40 - 0.08),
+    trill:      Math.max(0, f * 0.34 - 0.06),
   };
 
-  try {
-    const cancelled = () => myId !== sessionId;
-    if (mode === "quantum") {
-      await askQuantum(onToken, cancelled);
-    } else {
-      await askEnergy(onToken, cancelled);
+  const nextLane = (allowRepeat) => {
+    if (lanes === 1) return 0;
+    let n = Math.floor(rng() * lanes);
+    if (!allowRepeat && n === lane) n = (n + 1 + Math.floor(rng() * (lanes - 1))) % lanes;
+    lane = n;
+    return n;
+  };
+
+  const push = (beat, l) => notes.push({ beat, lane: l, time: 0, judged: false });
+
+  for (let bar = 0; bar < spec.bars; bar++) {
+    const b0 = bar * 4;
+    // Opening bar is always a gentle count-in phrase.
+    const kind = bar === 0 ? 'quarters' : pick(rng, weights);
+
+    if (kind === 'rest') {
+      push(b0, nextLane(true));
+    } else if (kind === 'quarters') {
+      for (let i = 0; i < 4; i++) push(b0 + i, nextLane(rng() < 0.3));
+    } else if (kind === 'eighths') {
+      for (let i = 0; i < 8; i++) if (i !== 5 || rng() < 0.7) push(b0 + i * 0.5, nextLane(rng() < 0.25));
+    } else if (kind === 'sixteenths') {
+      for (let i = 0; i < 8; i++) push(b0 + i * 0.25, nextLane(false));
+      for (let i = 0; i < 2; i++) push(b0 + 2 + i, nextLane(true));
+    } else if (kind === 'trill') {
+      const a = nextLane(false), c = nextLane(false);
+      for (let i = 0; i < 8; i++) push(b0 + i * 0.5, i % 2 ? c : a);
+    } else if (kind === 'jumps') {
+      for (let i = 0; i < 4; i++) {
+        const a = nextLane(true);
+        push(b0 + i, a);
+        if (lanes > 1 && rng() < 0.65) push(b0 + i, (a + 1 + Math.floor(rng() * (lanes - 1))) % lanes);
+      }
+      if (f > 0.5) for (let i = 0; i < 4; i++) push(b0 + 0.5 + i, nextLane(false));
     }
+  }
 
-    if (myId !== sessionId) return;
-    if (!full.trim()) throw new Error("empty response");
+  // Always land the final downbeat.
+  push(spec.bars * 4, Math.floor(lanes / 2));
 
-    body.classList.remove("streaming");
-    body.innerHTML = renderMarkdown(full, false);
-    history.push({ role: "assistant", content: full });
-  } catch (err) {
-    if (myId !== sessionId) return;
-    console.error("Quantum error:", err);
-    shell.remove();
-    addErrorBlock(err);
-  } finally {
-    if (myId === sessionId) setBusy(false);
+  const beatDur = 60 / spec.bpm;
+  notes.forEach(n => { n.time = n.beat * beatDur; });
+  notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
+  return notes;
+}
+
+/* ---------------------------------------------------------
+   3. COLOR HELPERS
+   --------------------------------------------------------- */
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function luminance(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function mixHex(hex, target, amt) {
+  const a = hexToRgb(hex), b = hexToRgb(target);
+  const c = a.map((v, i) => Math.round(v + (b[i] - v) * amt));
+  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+/* Very dark chart colors (Intense, nil, Unreal) need a legible playfield twin. */
+function playColor(hex) {
+  const l = luminance(hex);
+  if (l < 0.10) return mixHex(hex, '#FFFFFF', 0.62);
+  if (l < 0.22) return mixHex(hex, '#FFFFFF', 0.34);
+  return hex;
+}
+function rgba(hex, a) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ---------------------------------------------------------
+   4. AUDIO
+   --------------------------------------------------------- */
+const Sound = {
+  ctx: null, bus: null, noise: null, volume: 0.7,
+
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    this.bus = this.ctx.createGain();
+    this.bus.gain.value = this.volume;
+    const comp = this.ctx.createDynamicsCompressor();
+    this.bus.connect(comp).connect(this.ctx.destination);
+
+    const len = this.ctx.sampleRate * 0.5;
+    this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = this.noise.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  },
+
+  setVolume(v) { this.volume = v; if (this.bus) this.bus.gain.value = v; },
+  now() { return this.ctx.currentTime; },
+
+  tone(t, freq, dur, type, gain) {
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.bus);
+    o.start(t); o.stop(t + dur + 0.02);
+  },
+
+  burst(t, dur, freq, q, gain) {
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f).connect(g).connect(this.bus);
+    s.start(t); s.stop(t + dur + 0.02);
+  },
+
+  kick(t) {
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.12);
+    g.gain.setValueAtTime(0.85, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(this.bus);
+    o.start(t); o.stop(t + 0.25);
+  },
+
+  snare(t) { this.burst(t, 0.16, 1900, 0.8, 0.35); this.tone(t, 190, 0.09, 'triangle', 0.16); },
+  hat(t, loud) { this.burst(t, loud ? 0.05 : 0.03, 8200, 1.2, loud ? 0.14 : 0.07); },
+  tick(t) { this.tone(t, 1400, 0.06, 'square', 0.18); },
+
+  hit(kind) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (kind === 'miss') { this.tone(t, 96, 0.16, 'sawtooth', 0.16); return; }
+    const f = kind === 'perfect' ? 1320 : kind === 'great' ? 1050 : 780;
+    this.tone(t, f, 0.075, 'square', 0.11);
+  },
+};
+
+function midiFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+const MINOR = [0, 2, 3, 5, 7, 8, 10];
+
+/* ---------------------------------------------------------
+   5. GAME STATE
+   --------------------------------------------------------- */
+const G = {
+  spec: null, diff: null, notes: [], beatDur: 0,
+  startTime: 0, raf: 0, timer: 0, nextStep: 0,
+  running: false, ended: false, practice: false,
+  score: 0, combo: 0, maxCombo: 0,
+  counts: { perfect: 0, great: 0, good: 0, miss: 0 },
+  offsets: [], health: 100,
+  laneDown: [], flashes: [], sparks: [], popup: null,
+  endTime: 0, playHex: '#fff',
+};
+
+const BEST = {}; // session-only; no storage APIs
+
+const LANE_KEYS = {
+  1: [['Space']],
+  2: [['KeyF', 'ArrowLeft'], ['KeyJ', 'ArrowRight']],
+  3: [['KeyF', 'ArrowLeft'], ['Space', 'ArrowDown'], ['KeyJ', 'ArrowRight']],
+  4: [['KeyD', 'ArrowLeft'], ['KeyF', 'ArrowDown'], ['KeyJ', 'ArrowUp'], ['KeyK', 'ArrowRight']],
+};
+const LANE_LABELS = { 1: ['SPACE'], 2: ['F', 'J'], 3: ['F', 'SPACE', 'J'], 4: ['D', 'F', 'J', 'K'] };
+
+const BASE_WINDOWS = { perfect: 0.055, great: 0.100, good: 0.152 };
+
+/* ---------------------------------------------------------
+   6. DOM
+   --------------------------------------------------------- */
+const $ = s => document.querySelector(s);
+const screens = { select: $('#screen-select'), game: $('#screen-game'), results: $('#screen-results') };
+const canvas = $('#stage');
+const ctx2d = canvas.getContext('2d');
+
+let activeDiff = DIFFICULTIES[1]; // Easy selected on load
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('is-active'));
+  screens[name].classList.add('is-active');
+}
+
+function applyTheme(diff) {
+  const root = document.documentElement;
+  root.style.setProperty('--dif', diff.color);
+  root.style.setProperty('--dif-ink', luminance(diff.color) > 0.4 ? '#05050A' : '#ECEEF5');
+}
+
+/* ---------- chart rail ---------- */
+function buildRail() {
+  const rail = $('#chartRail');
+  let lastBand = null;
+  DIFFICULTIES.forEach((d, t) => {
+    if (d.band !== lastBand) {
+      const h = document.createElement('div');
+      h.className = 'band-head';
+      h.textContent = d.band;
+      rail.appendChild(h);
+      lastBand = d.band;
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rung';
+    b.style.setProperty('--rung', d.color);
+    b.dataset.id = d.id;
+    b.setAttribute('aria-current', String(d.id === activeDiff.id));
+    b.innerHTML =
+      `<span class="rung-tier">${String(t + 1).padStart(2, '0')}</span>` +
+      `<span class="rung-name">${d.name}</span>` +
+      `<span class="rung-portal"></span>`;
+    b.addEventListener('click', () => selectDiff(d));
+    rail.appendChild(b);
+  });
+}
+
+function selectDiff(d) {
+  activeDiff = d;
+  applyTheme(d);
+  document.querySelectorAll('.rung').forEach(r =>
+    r.setAttribute('aria-current', String(r.dataset.id === d.id)));
+  renderDetail();
+}
+
+function renderDetail() {
+  const d = activeDiff;
+  const tier = DIFFICULTIES.indexOf(d);
+  const levels = LEVELS[d.id];
+  const keys = LANE_LABELS[laneCount(tier)].map(k => `<kbd>${k}</kbd>`).join('');
+
+  const detail = $('#detail');
+  detail.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-orb"></div>
+      <div>
+        <h2 class="detail-name">${d.name}</h2>
+        <p class="detail-meta">Rung ${String(tier + 1).padStart(2, '0')} / ${DIFFICULTIES.length} · ${d.band} · ${laneCount(tier)} lane${laneCount(tier) > 1 ? 's' : ''}</p>
+      </div>
+    </div>
+    <p class="detail-blurb">${d.blurb}</p>
+    <div class="pulses" id="pulseList"></div>
+    <p class="keys-hint">Keys for this rung: ${keys} &nbsp;·&nbsp; arrow keys work too &nbsp;·&nbsp; <kbd>Esc</kbd> leaves a run</p>
+  `;
+
+  const list = $('#pulseList');
+  levels.forEach((spec, i) => {
+    const best = BEST[spec.name];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pulse';
+    btn.innerHTML = `
+      <span>
+        <span class="pulse-abbr">${spec.abbr}</span>
+        <span class="pulse-name">${spec.name}</span>
+        <span class="pulse-specs">
+          <span>${spec.bpm} BPM</span>
+          <span>${spec.bars} bars</span>
+          <span>${spec.lanes} lane${spec.lanes > 1 ? 's' : ''}</span>
+          <span>window ×${spec.windowScale.toFixed(2)}</span>
+        </span>
+      </span>
+      <span class="pulse-best ${best ? '' : 'is-empty'}">${best || '—'}</span>`;
+    btn.addEventListener('click', () => startLevel(spec, d));
+    list.appendChild(btn);
+  });
+}
+
+/* ---------------------------------------------------------
+   7. CANVAS SIZING
+   --------------------------------------------------------- */
+let W = 0, H = 0;
+function resize() {
+  const wrap = canvas.parentElement;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+function geometry() {
+  const lanes = G.spec.lanes;
+  const fieldW = Math.min(W * 0.92, lanes * 132);
+  const laneW = fieldW / lanes;
+  const x0 = (W - fieldW) / 2;
+  const recY = H - Math.max(96, H * 0.17);
+  return { lanes, fieldW, laneW, x0, recY };
+}
+
+/* ---------------------------------------------------------
+   8. START / STOP A RUN
+   --------------------------------------------------------- */
+function startLevel(spec, diff) {
+  Sound.init();
+  if (Sound.ctx.state === 'suspended') Sound.ctx.resume();
+
+  G.spec = spec;
+  G.diff = diff;
+  G.playHex = playColor(diff.color);
+  G.notes = generateChart(spec);
+  G.beatDur = 60 / spec.bpm;
+  G.practice = $('#practiceToggle').checked;
+  G.score = 0; G.combo = 0; G.maxCombo = 0;
+  G.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+  G.offsets = []; G.health = 100;
+  G.laneDown = new Array(spec.lanes).fill(0);
+  G.flashes = []; G.sparks = []; G.popup = null;
+  G.ended = false; G.running = true;
+  G.endTime = G.notes[G.notes.length - 1].time + 1.6;
+
+  $('#hudLevel').textContent = `${spec.abbr} · ${spec.name}`;
+  $('#hudDiff').textContent = diff.name;
+  $('#hudScore').textContent = '0';
+  $('#hudAcc').textContent = '100.00%';
+  $('#progressFill').style.width = '0%';
+  $('#healthFill').style.width = '100%';
+
+  buildTouchRow(spec.lanes);
+  showScreen('game');
+  resize();
+
+  const lead = 4 * G.beatDur + 0.6;
+  G.startTime = Sound.now() + lead;
+  G.nextStep = -16; // one bar of count-in
+
+  clearInterval(G.timer);
+  G.timer = setInterval(scheduleMusic, 25);
+  scheduleMusic();
+
+  cancelAnimationFrame(G.raf);
+  G.raf = requestAnimationFrame(frame);
+}
+
+function stopRun() {
+  G.running = false;
+  clearInterval(G.timer);
+  cancelAnimationFrame(G.raf);
+}
+
+function quitRun() {
+  stopRun();
+  $('#countdown').textContent = '';
+  showScreen('select');
+  renderDetail();
+}
+
+/* ---------------------------------------------------------
+   9. MUSIC SCHEDULER
+   --------------------------------------------------------- */
+function stepTime(step) { return G.startTime + step * (G.beatDur / 4); }
+
+function scheduleMusic() {
+  if (!G.running) return;
+  const horizon = Sound.now() + 0.18;
+  const totalSteps = G.spec.bars * 16 + 8;
+  while (stepTime(G.nextStep) < horizon && G.nextStep < totalSteps) {
+    const s = G.nextStep, t = stepTime(s);
+    if (s < 0) {
+      if (s % 4 === 0) Sound.tick(t);
+    } else {
+      const inBar = ((s % 16) + 16) % 16;
+      const bar = Math.floor(s / 16);
+      const f = G.spec.intensity;
+      const prog = [0, 5, 3, 4][(bar + G.spec.variant) % 4];
+      const rootMidi = 33 + MINOR[prog % 7] + (prog >= 7 ? 12 : 0);
+
+      if (inBar % 4 === 0) Sound.kick(t);
+      if (inBar === 4 || inBar === 12) Sound.snare(t);
+      if (inBar % 2 === 0) Sound.hat(t, inBar % 4 === 2);
+      if (inBar === 0) Sound.tone(t, midiFreq(rootMidi), G.beatDur * 1.6, 'sawtooth', 0.10);
+      if (inBar === 8) Sound.tone(t, midiFreq(rootMidi + 7), G.beatDur * 0.9, 'sawtooth', 0.07);
+      if (f > 0.28 && inBar % 4 === 2) {
+        const arp = [0, 3, 7, 10][(inBar / 4 + bar) % 4];
+        Sound.tone(t, midiFreq(rootMidi + 24 + arp), 0.12, 'square', 0.045 + f * 0.03);
+      }
+    }
+    G.nextStep++;
   }
 }
 
-function sendMessage(text) {
-  const clean = text.trim();
-  if (!clean || streaming) return;
-
-  const welcome = document.getElementById("welcome");
-  if (welcome) welcome.remove();
-
-  history.push({ role: "user", content: clean });
-  addUserBubble(clean);
-  input.value = "";
-  input.style.height = "auto";
-  requestReply();
+/* ---------------------------------------------------------
+   10. INPUT
+   --------------------------------------------------------- */
+function windows() {
+  const s = G.spec.windowScale;
+  return { perfect: BASE_WINDOWS.perfect * s, great: BASE_WINDOWS.great * s, good: BASE_WINDOWS.good * s };
 }
 
-// ---------- mode switching ----------
-function setMode(next, silent) {
-  if (mode === next) return;
-  mode = next;
-  document.body.classList.toggle("mode-quantum", mode === "quantum");
-  document.body.classList.toggle("mode-energy", mode === "energy");
-  qBtn.classList.toggle("active", mode === "quantum");
-  eBtn.classList.toggle("active", mode === "energy");
-  tagline.textContent = mode === "quantum"
-    ? "Quantum 2.0 — powered by Claude"
-    : "Energy 1.0 — lighter backup engine";
-  try { localStorage.setItem("quantum-mode", mode); } catch (e) {}
-  if (!silent && !document.getElementById("welcome")) addModeNote();
+function songTime() { return Sound.now() - G.startTime; }
+
+function pressLane(lane) {
+  if (!G.running || G.ended) return;
+  G.laneDown[lane] = performance.now();
+
+  const now = songTime();
+  const w = windows();
+  let best = null, bestAbs = Infinity;
+
+  for (const n of G.notes) {
+    if (n.judged || n.lane !== lane) continue;
+    const dt = n.time - now;
+    if (dt > w.good) break;
+    const a = Math.abs(dt);
+    if (a <= w.good && a < bestAbs) { best = n; bestAbs = a; }
+  }
+
+  if (!best) return;
+  const dt = now - best.time;
+  const a = Math.abs(dt);
+  const kind = a <= w.perfect ? 'perfect' : a <= w.great ? 'great' : 'good';
+  judge(best, kind, dt);
 }
 
-// ---------- new chat ----------
-function newChat() {
-  sessionId++;
-  history = [];
-  setBusy(false);
-  chat.innerHTML = WELCOME_HTML;
-  input.focus();
+function releaseLane(lane) { G.laneDown[lane] = 0; }
+
+function judge(note, kind, dt) {
+  if (G.ended) return;
+  note.judged = true;
+  G.counts[kind]++;
+  G.offsets.push(dt * 1000);
+
+  if (kind === 'miss') {
+    G.combo = 0;
+    G.health -= G.practice ? 0 : 9;
+    Sound.hit('miss');
+  } else {
+    G.combo++;
+    G.maxCombo = Math.max(G.maxCombo, G.combo);
+    const base = kind === 'perfect' ? 350 : kind === 'great' ? 220 : 110;
+    G.score += Math.round(base * (1 + Math.min(G.combo, 60) / 120));
+    G.health = Math.min(100, G.health + (kind === 'perfect' ? 1.6 : kind === 'great' ? 1.0 : 0.2));
+    Sound.hit(kind);
+    G.flashes.push({ lane: note.lane, t: performance.now(), kind });
+    G.sparks.push({ lane: note.lane, t: performance.now() });
+  }
+  G.popup = { kind, t: performance.now(), dt };
+
+  if (!G.practice && G.health <= 0) finish(true);
 }
 
-// ---------- events ----------
-sendBtn.addEventListener("click", () => sendMessage(input.value));
-
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
-    e.preventDefault();
-    sendMessage(input.value);
+document.addEventListener('keydown', e => {
+  if (e.code === 'Escape' && screens.game.classList.contains('is-active')) { quitRun(); return; }
+  if (!G.running || e.repeat) return;
+  const map = LANE_KEYS[G.spec.lanes];
+  for (let i = 0; i < map.length; i++) {
+    if (map[i].includes(e.code)) { e.preventDefault(); pressLane(i); return; }
   }
 });
-
-input.addEventListener("input", () => {
-  input.style.height = "auto";
-  input.style.height = Math.min(input.scrollHeight, 160) + "px";
+document.addEventListener('keyup', e => {
+  if (!G.spec) return;
+  const map = LANE_KEYS[G.spec.lanes];
+  for (let i = 0; i < map.length; i++) if (map[i].includes(e.code)) releaseLane(i);
 });
 
-newBtn.addEventListener("click", newChat);
-qBtn.addEventListener("click", () => setMode("quantum"));
-eBtn.addEventListener("click", () => setMode("energy"));
-
-chat.addEventListener("click", e => {
-  const chip = e.target.closest(".chip");
-  if (chip) { sendMessage(chip.textContent); return; }
-
-  const btn = e.target.closest(".copy-btn");
-  if (btn) {
-    const code = btn.closest(".code-block").querySelector("code");
-    navigator.clipboard.writeText(code.innerText).then(() => {
-      btn.textContent = "Copied ✓";
-      setTimeout(() => (btn.textContent = "Copy"), 1400);
-    });
+function buildTouchRow(lanes) {
+  const row = $('#touchRow');
+  row.innerHTML = '';
+  for (let i = 0; i < lanes; i++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.addEventListener('pointerdown', ev => { ev.preventDefault(); pressLane(i); });
+    b.addEventListener('pointerup', () => releaseLane(i));
+    b.addEventListener('pointercancel', () => releaseLane(i));
+    row.appendChild(b);
   }
-});
+}
 
-// ---------- go ----------
-try {
-  const saved = localStorage.getItem("quantum-mode");
-  if (saved === "energy") setMode("energy", true);
-} catch (e) {}
-chat.innerHTML = WELCOME_HTML;
+/* ---------------------------------------------------------
+   11. FRAME LOOP
+   --------------------------------------------------------- */
+function frame() {
+  if (!G.running) return;
+  const now = songTime();
+  const w = windows();
+
+  // late misses
+  for (const n of G.notes) {
+    if (!n.judged && n.time < now - w.good) judge(n, 'miss', w.good);
+    if (n.time > now + 0.2) break;
+  }
+
+  draw(now);
+  updateHud(now);
+
+  if (!G.ended && now > G.endTime) finish(false);
+  G.raf = requestAnimationFrame(frame);
+}
+
+function accuracy() {
+  const c = G.counts;
+  const total = c.perfect + c.great + c.good + c.miss;
+  if (!total) return 100;
+  return ((c.perfect + c.great * 0.7 + c.good * 0.35) / total) * 100;
+}
+
+function updateHud(now) {
+  $('#hudScore').textContent = G.score.toLocaleString();
+  $('#hudAcc').textContent = accuracy().toFixed(2) + '%';
+  const p = Math.max(0, Math.min(1, now / G.endTime));
+  $('#progressFill').style.width = (p * 100).toFixed(1) + '%';
+  $('#healthFill').style.width = Math.max(0, G.health) + '%';
+
+  const cd = $('#countdown');
+  if (now < 0) {
+    const beats = Math.ceil(-now / G.beatDur);
+    cd.textContent = beats > 4 ? 'READY' : String(Math.min(4, beats));
+  } else if (cd.textContent) {
+    cd.textContent = '';
+  }
+}
+
+/* ---------------------------------------------------------
+   12. RENDER
+   --------------------------------------------------------- */
+function roundRect(x, y, w, h, r) {
+  ctx2d.beginPath();
+  ctx2d.moveTo(x + r, y);
+  ctx2d.arcTo(x + w, y, x + w, y + h, r);
+  ctx2d.arcTo(x + w, y + h, x, y + h, r);
+  ctx2d.arcTo(x, y + h, x, y, r);
+  ctx2d.arcTo(x, y, x + w, y, r);
+  ctx2d.closePath();
+}
+
+function draw(now) {
+  const { lanes, laneW, x0, recY, fieldW } = geometry();
+  const hex = G.playHex;
+  const approach = G.spec.approach;
+  const perf = performance.now();
+
+  ctx2d.clearRect(0, 0, W, H);
+
+  // lane beds
+  for (let i = 0; i < lanes; i++) {
+    ctx2d.fillStyle = i % 2 ? 'rgba(255,255,255,0.018)' : 'rgba(255,255,255,0.032)';
+    ctx2d.fillRect(x0 + i * laneW, 0, laneW, recY + 40);
+  }
+
+  // scrolling beat lines
+  const firstBeat = Math.floor(now / G.beatDur) - 1;
+  for (let b = firstBeat; b < firstBeat + approach / G.beatDur + 3; b++) {
+    if (b < 0) continue;
+    const t = b * G.beatDur;
+    const y = recY * (1 - (t - now) / approach);
+    if (y < -10 || y > recY) continue;
+    ctx2d.strokeStyle = b % 4 === 0 ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.05)';
+    ctx2d.lineWidth = 1;
+    ctx2d.beginPath();
+    ctx2d.moveTo(x0, y + 0.5);
+    ctx2d.lineTo(x0 + fieldW, y + 0.5);
+    ctx2d.stroke();
+  }
+
+  // hit line
+  ctx2d.strokeStyle = rgba(hex, 0.55);
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath();
+  ctx2d.moveTo(x0, recY + 0.5);
+  ctx2d.lineTo(x0 + fieldW, recY + 0.5);
+  ctx2d.stroke();
+
+  // receptors
+  const size = Math.min(laneW * 0.66, 74);
+  for (let i = 0; i < lanes; i++) {
+    const cx = x0 + i * laneW + laneW / 2;
+    const down = G.laneDown[i] && perf - G.laneDown[i] < 110;
+    const flash = G.flashes.find(f => f.lane === i && perf - f.t < 160);
+
+    ctx2d.save();
+    ctx2d.translate(cx, recY);
+    const s = size * (flash ? 1.12 : down ? 1.05 : 1);
+    ctx2d.lineWidth = 2;
+    ctx2d.strokeStyle = down || flash ? hex : 'rgba(255,255,255,0.28)';
+    if (flash) { ctx2d.shadowColor = hex; ctx2d.shadowBlur = 26; }
+    roundRect(-s / 2, -s / 2, s, s, 8);
+    ctx2d.stroke();
+    if (down || flash) { ctx2d.fillStyle = rgba(hex, flash ? 0.35 : 0.16); ctx2d.fill(); }
+    ctx2d.restore();
+
+    // key label
+    ctx2d.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx2d.font = '600 11px "JetBrains Mono", monospace';
+    ctx2d.textAlign = 'center';
+    ctx2d.fillText(LANE_LABELS[lanes][i], cx, recY + size / 2 + 22);
+  }
+
+  // notes
+  const nSize = size * 0.86;
+  for (const n of G.notes) {
+    const dt = n.time - now;
+    if (dt > approach) break;
+    if (n.judged || dt < -0.25) continue;
+    const y = recY * (1 - dt / approach);
+    const cx = x0 + n.lane * laneW + laneW / 2;
+    const onBeat = Math.abs(n.beat - Math.round(n.beat)) < 0.01;
+
+    ctx2d.save();
+    ctx2d.translate(cx, y);
+    ctx2d.fillStyle = hex;
+    ctx2d.shadowColor = rgba(hex, 0.8);
+    ctx2d.shadowBlur = onBeat ? 18 : 8;
+    roundRect(-nSize / 2, -nSize / 2, nSize, nSize, 7);
+    ctx2d.fill();
+    ctx2d.shadowBlur = 0;
+    ctx2d.fillStyle = onBeat ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.35)';
+    const inner = nSize * (onBeat ? 0.26 : 0.5);
+    roundRect(-inner / 2, -inner / 2, inner, inner, 3);
+    ctx2d.fill();
+    ctx2d.restore();
+  }
+
+  // hit sparks
+  G.sparks = G.sparks.filter(s => perf - s.t < 320);
+  for (const s of G.sparks) {
+    const k = (perf - s.t) / 320;
+    const cx = x0 + s.lane * laneW + laneW / 2;
+    ctx2d.strokeStyle = rgba(hex, (1 - k) * 0.6);
+    ctx2d.lineWidth = 2 * (1 - k) + 0.5;
+    ctx2d.beginPath();
+    ctx2d.arc(cx, recY, size * 0.5 + k * 46, 0, Math.PI * 2);
+    ctx2d.stroke();
+  }
+  G.flashes = G.flashes.filter(f => perf - f.t < 200);
+
+  // combo
+  if (G.combo > 2) {
+    ctx2d.textAlign = 'center';
+    ctx2d.fillStyle = rgba(hex, 0.9);
+    ctx2d.font = '700 46px "JetBrains Mono", monospace';
+    ctx2d.fillText(String(G.combo), W / 2, recY * 0.46);
+    ctx2d.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx2d.font = '600 11px "Chakra Petch", sans-serif';
+    ctx2d.fillText('COMBO', W / 2, recY * 0.46 + 20);
+  }
+
+  // judgment popup
+  if (G.popup && perf - G.popup.t < 520) {
+    const k = (perf - G.popup.t) / 520;
+    const label = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' }[G.popup.kind];
+    const col = G.popup.kind === 'miss' ? '#D4453A'
+      : G.popup.kind === 'perfect' ? hex
+      : G.popup.kind === 'great' ? '#EAECF3' : '#8E93A6';
+    ctx2d.globalAlpha = 1 - k * k;
+    ctx2d.textAlign = 'center';
+    ctx2d.fillStyle = col;
+    ctx2d.font = '700 26px "Chakra Petch", sans-serif';
+    ctx2d.fillText(label, W / 2, recY * 0.72 - k * 14);
+    if (G.popup.kind !== 'miss') {
+      ctx2d.font = '400 11px "JetBrains Mono", monospace';
+      ctx2d.fillStyle = 'rgba(255,255,255,0.4)';
+      const ms = G.popup.dt * 1000;
+      ctx2d.fillText(`${ms >= 0 ? '+' : ''}${ms.toFixed(0)} ms`, W / 2, recY * 0.72 + 16 - k * 14);
+    }
+    ctx2d.globalAlpha = 1;
+  }
+}
+
+/* ---------------------------------------------------------
+   13. RESULTS
+   --------------------------------------------------------- */
+function rankFor(acc, failed) {
+  if (failed) return 'F';
+  if (acc >= 99.9) return 'SSS';
+  if (acc >= 98) return 'SS';
+  if (acc >= 95) return 'S';
+  if (acc >= 90) return 'A';
+  if (acc >= 80) return 'B';
+  if (acc >= 70) return 'C';
+  if (acc >= 60) return 'D';
+  return 'E';
+}
+const RANK_ORDER = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
+
+function finish(failed) {
+  if (G.ended) return;
+  G.ended = true;
+  stopRun();
+  $('#countdown').textContent = '';
+
+  const acc = accuracy();
+  const rank = rankFor(acc, failed);
+  const c = G.counts;
+  const mean = G.offsets.length
+    ? G.offsets.reduce((a, b) => a + b, 0) / G.offsets.length : 0;
+
+  $('#resVerdict').textContent = failed ? 'Tower fallen' : (G.practice ? 'Cleared — practice' : 'Cleared');
+  $('#resVerdict').classList.toggle('failed', failed);
+  $('#resLevel').textContent = `${G.spec.abbr} · ${G.spec.name}`;
+  $('#resDiff').textContent = `${G.diff.name} · ${G.spec.bpm} BPM`;
+  $('#resRank').textContent = rank;
+  $('#resAcc').textContent = acc.toFixed(2) + '%';
+  $('#resCombo').textContent = G.maxCombo + 'x';
+  $('#resScore').textContent = G.score.toLocaleString();
+  $('#resPerfect').textContent = c.perfect;
+  $('#resGreat').textContent = c.great;
+  $('#resGood').textContent = c.good;
+  $('#resMiss').textContent = c.miss;
+  $('#resOffset').textContent = `${mean >= 0 ? '+' : ''}${mean.toFixed(1)} ms`;
+
+  if (!failed && !G.practice) {
+    const prev = BEST[G.spec.name];
+    if (!prev || RANK_ORDER.indexOf(rank) > RANK_ORDER.indexOf(prev)) BEST[G.spec.name] = rank;
+  }
+
+  showScreen('results');
+}
+
+/* ---------------------------------------------------------
+   14. WIRING
+   --------------------------------------------------------- */
+$('#quitBtn').addEventListener('click', quitRun);
+$('#backBtn').addEventListener('click', () => { showScreen('select'); renderDetail(); });
+$('#retryBtn').addEventListener('click', () => startLevel(G.spec, G.diff));
+$('#volume').addEventListener('input', e => Sound.setVolume(e.target.value / 100));
+
+buildRail();
+applyTheme(activeDiff);
+renderDetail();

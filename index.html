@@ -1,53 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#05070F">
-<meta name="description" content="QUANTUM — a real AI chat with two engines, live on FreshFun.">
-<title>QUANTUM — a real AI chat</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-<link rel="stylesheet" href="style.css">
-
-<!-- Engine A: free, keyless Claude access -->
-<script src="https://js.puter.com/v2/"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pulse Ascent — a timing tower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
 </head>
-<body class="mode-quantum">
+<body>
 
-<div class="grid" aria-hidden="true"></div>
+<div id="app">
 
-<header class="topbar">
-  <div class="brand">
-    <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>
-    </svg>
-    <span class="brand-name">QUANTUM</span>
-  </div>
+  <!-- ============ SELECT SCREEN ============ -->
+  <section class="screen is-active" id="screen-select">
+    <header class="masthead">
+      <div class="mast-left">
+        <h1 class="wordmark">PULSE<span>ASCENT</span></h1>
+        <p class="tagline">Climb the chart. One key at a time.</p>
+      </div>
+      <div class="mast-right">
+        <label class="toggle">
+          <input type="checkbox" id="practiceToggle" />
+          <span class="toggle-box"></span>
+          <span class="toggle-label">Practice mode<em>never fail out</em></span>
+        </label>
+        <label class="slider">
+          <span class="toggle-label">Volume</span>
+          <input type="range" id="volume" min="0" max="100" value="70" />
+        </label>
+      </div>
+    </header>
 
-  <div class="topbar-right">
-    <div class="mode-toggle" role="group" aria-label="Choose engine">
-      <button id="modeQuantum" class="mode-btn active" type="button">Quantum<span class="v">&nbsp;2.0</span></button>
-      <button id="modeEnergy" class="mode-btn" type="button">Energy<span class="v">&nbsp;1.0</span></button>
+    <div class="select-body">
+      <nav class="chart" aria-label="Difficulty chart">
+        <div class="chart-rail" id="chartRail"></div>
+      </nav>
+
+      <div class="detail" id="detail">
+        <!-- filled by script.js -->
+      </div>
     </div>
-    <button id="newChatBtn" class="icon-btn" type="button" title="New chat" aria-label="Start a new chat">+</button>
-  </div>
-</header>
 
-<main id="chat" class="chat" aria-live="polite"></main>
+    <footer class="legend">
+      <span class="legend-item"><i class="dot" style="background:#5B9A4C"></i>Standard</span>
+      <span class="legend-item"><i class="dot" style="background:#0000FF"></i>Soul Crushing</span>
+      <span class="legend-item"><i class="dot" style="background:#635F62"></i>Joke</span>
+      <span class="legend-note">Colors follow the EToH / JToH difficulty chart.</span>
+    </footer>
+  </section>
 
-<div class="composer-wrap">
-  <div class="composer">
-    <textarea id="input" rows="1" placeholder="Ask Quantum anything…" aria-label="Message Quantum"></textarea>
-    <button id="sendBtn" class="send-btn" type="button" aria-label="Send message">↑</button>
-  </div>
-  <p class="tagline" id="tagline">Quantum 2.0 — powered by Claude</p>
+  <!-- ============ GAME SCREEN ============ -->
+  <section class="screen" id="screen-game">
+    <div class="hud">
+      <div class="hud-left">
+        <button class="quit" id="quitBtn" type="button">Leave tower</button>
+        <div class="hud-title">
+          <strong id="hudLevel">—</strong>
+          <span id="hudDiff">—</span>
+        </div>
+      </div>
+      <div class="hud-right">
+        <div class="stat"><span>Score</span><b id="hudScore">0</b></div>
+        <div class="stat"><span>Accuracy</span><b id="hudAcc">100.00%</b></div>
+      </div>
+    </div>
+
+    <div class="bars">
+      <div class="bar bar-progress"><i id="progressFill"></i></div>
+      <div class="bar bar-health"><i id="healthFill"></i></div>
+    </div>
+
+    <div class="stage-wrap">
+      <canvas id="stage"></canvas>
+      <div class="countdown" id="countdown" aria-live="polite"></div>
+      <div class="touchrow" id="touchRow" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section class="screen" id="screen-results">
+    <div class="results-card" id="resultsCard">
+      <p class="results-verdict" id="resVerdict">Cleared</p>
+      <h2 class="results-level" id="resLevel">—</h2>
+      <p class="results-diff" id="resDiff">—</p>
+
+      <div class="rank" id="resRank">S</div>
+
+      <dl class="results-grid">
+        <div><dt>Accuracy</dt><dd id="resAcc">—</dd></div>
+        <div><dt>Max combo</dt><dd id="resCombo">—</dd></div>
+        <div><dt>Score</dt><dd id="resScore">—</dd></div>
+        <div><dt>Perfect</dt><dd id="resPerfect">—</dd></div>
+        <div><dt>Great</dt><dd id="resGreat">—</dd></div>
+        <div><dt>Good</dt><dd id="resGood">—</dd></div>
+        <div><dt>Missed</dt><dd id="resMiss">—</dd></div>
+        <div><dt>Mean offset</dt><dd id="resOffset">—</dd></div>
+      </dl>
+
+      <div class="results-actions">
+        <button class="btn btn-primary" id="retryBtn" type="button">Run it again</button>
+        <button class="btn" id="backBtn" type="button">Back to the chart</button>
+      </div>
+    </div>
+  </section>
+
 </div>
-
-<noscript><p class="noscript">Quantum needs JavaScript to think. Turn it on and reload.</p></noscript>
 
 <script src="script.js"></script>
 </body>
