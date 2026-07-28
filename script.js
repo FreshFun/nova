@@ -1,11 +1,11 @@
 /* =========================================================
-   PULSE ASCENT — a timing tower
+   FRESH'S PULSES OF HELL — a timing tower
    Difficulty chart colors follow the EToH / JToH chart.
    No assets: music and charts are generated at runtime.
    ========================================================= */
 'use strict';
 
-const BUILD = 'b8';
+const BUILD = 'b10';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -69,7 +69,7 @@ function renderDiagnostics() {
    --------------------------------------------------------- */
 const DIFFICULTIES = [
   { id:'effortless',   name:'Effortless',   color:'#8AAB85', band:'Standard',
-    blurb:'The bottom rung. A beat, a key, and enough room to think between them.' },
+    blurb:'The bottom ring. A beat, a key, and enough room to think between them.' },
   { id:'easy',         name:'Easy',         color:'#5B9A4C', band:'Standard',
     blurb:'Two keys, steady eighths, generous windows. Where everyone actually starts.' },
   { id:'medium',       name:'Medium',       color:'#FFB000', band:'Standard',
@@ -83,7 +83,7 @@ const DIFFICULTIES = [
   { id:'intense',      name:'Intense',      color:'#1B2A35', band:'Standard',
     blurb:'Machine tempo. Nothing is decorative anymore — every note is load-bearing.' },
   { id:'remorseless',  name:'Remorseless',  color:'#FF00BF', band:'Standard',
-    blurb:'The last standard rung. Dense, bright, and completely uninterested in your wrists.' },
+    blurb:'The last standard ring. Dense, bright, and completely uninterested in your wrists.' },
   { id:'insane',       name:'Insane',       color:'#0000FF', band:'Soul Crushing',
     blurb:'Soul Crushing begins. Timing windows are now measured in single frames.' },
   { id:'extreme',      name:'Extreme',      color:'#2154B9', band:'Soul Crushing',
@@ -165,10 +165,19 @@ const PULSES = {
   ],
 };
 
-/* Banner shown on a rung, and the gate that stands in front of a run. */
+/* Banner shown on a ring. A difficulty can override its band's warning. */
 const BAND_WARNING = {
-  'Soul Crushing': { text:'EXTREMELY DIFFICULT', note:'Frame-tight windows and streams that never let up.' },
-  'Mind Breaking': { text:'BEYOND HUMAN LIMITS', note:'Charted to be looked at. Clearing one is not the expectation.' },
+  'Soul Crushing': { text:'EXTREMELY DIFFICULT', tone:'sc',
+    note:'Frame-tight windows and streams that never let up.' },
+  'Mind Breaking': { text:'BEYOND HUMAN LIMITS', tone:'mind',
+    note:'Charted to be looked at. Clearing one is not the expectation.' },
+};
+
+const DIFF_WARNING = {
+  intense:     { text:'NOT FOR BEGINNERS', tone:'caution',
+    note:'Machine tempo, and nothing decorative left in the chart.' },
+  remorseless: { text:'NOT FOR BEGINNERS AT ALL', tone:'caution-hard',
+    note:'The last standard ring, and it already plays like a Soul Crushing one.' },
 };
 
 /* Per-tier tuning. index = position on the chart. */
@@ -620,7 +629,7 @@ function renderDetail() {
   const tier = DIFFICULTIES.indexOf(d);
   const levels = LEVELS[d.id];
   const keys = LANE_LABELS[laneCount(tier)].map(k => `<kbd>${k}</kbd>`).join('');
-  const warn = BAND_WARNING[d.band];
+  const warn = DIFF_WARNING[d.id] || BAND_WARNING[d.band];
 
   const detail = $('#detail');
   detail.innerHTML = `
@@ -628,14 +637,14 @@ function renderDetail() {
       <div class="detail-orb"></div>
       <div>
         <h2 class="detail-name">${d.name}</h2>
-        <p class="detail-meta">Rung ${String(tier + 1).padStart(2, '0')} / ${DIFFICULTIES.length} · ${d.band} · ${laneCount(tier)} lane${laneCount(tier) > 1 ? 's' : ''} · ${BUILD}</p>
+        <p class="detail-meta">Ring ${String(tier + 1).padStart(2, '0')} / ${DIFFICULTIES.length} · ${d.band} · ${laneCount(tier)} lane${laneCount(tier) > 1 ? 's' : ''} · ${BUILD}</p>
       </div>
     </div>
-    ${warn ? `<div class="warn warn-${d.band === 'Mind Breaking' ? 'mind' : 'sc'}">
+    ${warn ? `<div class="warn warn-${warn.tone}">
       <strong>${warn.text}</strong><span>${warn.note}</span></div>` : ''}
     <p class="detail-blurb">${d.blurb}</p>
     <div class="pulses" id="pulseList"></div>
-    <p class="keys-hint">Keys for this rung: ${keys} &nbsp;·&nbsp; arrow keys work too &nbsp;·&nbsp; <kbd>Esc</kbd> leaves a run</p>
+    <p class="keys-hint">Keys for this ring: ${keys} &nbsp;·&nbsp; arrow keys work too &nbsp;·&nbsp; <kbd>Esc</kbd> leaves a run</p>
   `;
 
   const list = $('#pulseList');
@@ -662,7 +671,7 @@ function renderDetail() {
   });
 }
 
-/* Mind Breaking rungs stand behind a gate rather than starting on a stray click. */
+/* Mind Breaking rings stand behind a gate rather than starting on a stray click. */
 let pendingRun = null;
 
 function requestLevel(spec, diff) {
@@ -727,6 +736,7 @@ function startLevel(spec, diff) {
   G.ended = false; G.running = true; G.armed = false;
   G.endTime = G.notes[G.notes.length - 1].time + 1.6;
 
+  $('#quitBtn').textContent = spec.kind === 'citadel' ? 'Leave citadel' : 'Leave pulse';
   $('#hudLevel').textContent = `${spec.abbr} · ${spec.name}`;
   $('#hudDiff').textContent = diff.name;
   $('#hudScore').textContent = '0';

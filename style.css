@@ -589,6 +589,10 @@ button, input { font-family: inherit; color: inherit; }
 .warn-sc strong   { color: #E4574A; }
 .warn-mind { border-color: rgba(167,94,155,.6); background: rgba(167,94,155,.09); }
 .warn-mind strong { color: #D08FC6; }
+.warn-caution { border-color: rgba(224,160,32,.45); background: rgba(224,160,32,.07); }
+.warn-caution strong { color: #E8B23C; }
+.warn-caution-hard { border-color: rgba(255,0,191,.45); background: rgba(255,0,191,.08); }
+.warn-caution-hard strong { color: #FF52D2; }
 
 .pulse-text { min-width: 0; }
 .pulse-name { overflow-wrap: anywhere; }
