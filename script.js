@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b10';
+const BUILD = 'b11';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -94,7 +94,7 @@ const DIFFICULTIES = [
     blurb:'A wall of white. The chart stops being a rhythm and becomes a texture.' },
   { id:'horrific',     name:'Horrific',     color:'#A75E9B', band:'Mind Breaking',
     blurb:'Beyond reasonable. Built to be looked at more than it is ever cleared.' },
-  { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Mind Breaking',
+  { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Mind Breaking', rainbow:true,
     blurb:'The top of the canon chart. Good luck. Practice mode exists for a reason.' },
   { id:'nil',          name:'nil',          color:'#635F62', band:'Joke',
     blurb:'Not a real difficulty. Not a real chart. Press keys and see what happens.' },
@@ -363,6 +363,22 @@ function rgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+/* Unreal has no fixed color — it cycles the whole spectrum. Everything themed
+   off --dif follows along, and the playfield picks the hue up per frame. */
+const RAINBOW_PERIOD = 3.4; // seconds for a full turn of the wheel
+
+function hslToHex(h, sPct, lPct) {
+  const s = sPct / 100, l = lPct / 100;
+  const a = s * Math.min(l, 1 - l);
+  const k = n => (n + h / 30) % 12;
+  const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return '#' + [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function rainbowHex(tSec) {
+  return hslToHex(((tSec / RAINBOW_PERIOD) % 1) * 360, 88, 60);
+}
+
 /* ---------------------------------------------------------
    4. AUDIO
    --------------------------------------------------------- */
@@ -585,8 +601,20 @@ function showScreen(name) {
 
 function applyTheme(diff) {
   const root = document.documentElement;
-  root.style.setProperty('--dif', diff.color);
-  root.style.setProperty('--dif-ink', luminance(diff.color) > 0.4 ? '#05050A' : '#ECEEF5');
+  const hex = diff.rainbow ? rainbowHex(performance.now() / 1000) : diff.color;
+  root.style.setProperty('--dif', hex);
+  root.style.setProperty('--dif-ink', luminance(hex) > 0.4 ? '#05050A' : '#ECEEF5');
+}
+
+const rainbowRungs = [];
+function tickRainbow() {
+  const hex = rainbowHex(performance.now() / 1000);
+  for (const el of rainbowRungs) el.style.setProperty('--rung', hex);
+  if (activeDiff && activeDiff.rainbow) {
+    const root = document.documentElement;
+    root.style.setProperty('--dif', hex);
+    root.style.setProperty('--dif-ink', luminance(hex) > 0.4 ? '#05050A' : '#ECEEF5');
+  }
 }
 
 /* ---------- chart rail ---------- */
@@ -612,6 +640,7 @@ function buildRail() {
       `<span class="rung-name">${d.name}</span>` +
       `<span class="rung-portal"></span>`;
     b.addEventListener('click', () => selectDiff(d));
+    if (d.rainbow) rainbowRungs.push(b);
     rail.appendChild(b);
   });
 }
@@ -722,7 +751,7 @@ function startLevel(spec, diff) {
 
   G.spec = spec;
   G.diff = diff;
-  G.playHex = playColor(diff.color);
+  G.playHex = diff.rainbow ? rainbowHex(performance.now() / 1000) : playColor(diff.color);
   G.notes = generateChart(spec);
   G.beatDur = 60 / spec.bpm;
   G.practice = $('#practiceToggle').checked || spec.tutorial;
@@ -976,6 +1005,7 @@ function frame() {
 }
 
 function stepFrame() {
+  if (G.diff && G.diff.rainbow) G.playHex = rainbowHex(performance.now() / 1000);
 
   const wall = performance.now() / 1000;
   const wallDelta = G.lastFrame ? wall - G.lastFrame : 0;
@@ -1176,7 +1206,7 @@ function draw(now) {
   // judgment popup
   if (G.popup && perf - G.popup.t < 520) {
     const k = (perf - G.popup.t) / 520;
-    const label = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', spam: 'SPAM' }[G.popup.kind];
+    const label = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', spam: 'MISS' }[G.popup.kind];
     const col = (G.popup.kind === 'miss' || G.popup.kind === 'spam') ? '#D4453A'
       : G.popup.kind === 'perfect' ? hex
       : G.popup.kind === 'great' ? '#EAECF3' : '#8E93A6';
@@ -1265,5 +1295,6 @@ $('#retryBtn').addEventListener('click', () => startLevel(G.spec, G.diff));
 $('#volume').addEventListener('input', e => Sound.setVolume(e.target.value / 100));
 
 buildRail();
+setInterval(guard('rainbow', tickRainbow), 60);
 applyTheme(activeDiff);
 renderDetail();
