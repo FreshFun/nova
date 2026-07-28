@@ -1,5 +1,5 @@
 /* =========================================================
-   PULSE ASCENT
+   FRESH'S PULSES OF HELL
    Palette
    --void   #05050A   deep shell
    --slab   #0D0E15   panel
@@ -78,7 +78,7 @@ button, input { font-family: inherit; color: inherit; }
 .wordmark span {
   display: block;
   font-size: .44em;
-  letter-spacing: .62em;
+  letter-spacing: .26em;
   color: var(--dif);
   transition: color .35s ease;
   margin-top: .5em;
@@ -560,3 +560,159 @@ button, input { font-family: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* ---------------------------------------------------------
+   RUNG WARNINGS + RUN BADGES
+   --------------------------------------------------------- */
+.warn {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid;
+  border-radius: var(--r);
+  background: rgba(0,0,0,.35);
+}
+.warn strong {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .26em;
+}
+.warn span {
+  font-size: 12.5px;
+  color: #9AA0B2;
+  letter-spacing: .01em;
+}
+.warn-sc   { border-color: rgba(212,69,58,.5);  background: rgba(212,69,58,.07); }
+.warn-sc strong   { color: #E4574A; }
+.warn-mind { border-color: rgba(167,94,155,.6); background: rgba(167,94,155,.09); }
+.warn-mind strong { color: #D08FC6; }
+
+.pulse-text { min-width: 0; }
+.pulse-name { overflow-wrap: anywhere; }
+.pulse-badge {
+  font-style: normal;
+  margin-left: 10px;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+/* ---------------------------------------------------------
+   MIND BREAKING GATE
+   --------------------------------------------------------- */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3,3,7,.9);
+  backdrop-filter: blur(3px);
+}
+.gate[hidden] { display: none; }
+
+.gate-card {
+  width: min(520px, 100%);
+  padding: clamp(24px, 5vw, 38px);
+  background: var(--slab);
+  border: 1px solid rgba(167,94,155,.45);
+  border-top: 3px solid var(--dif);
+  border-radius: var(--r);
+  text-align: center;
+}
+.gate-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--dif);
+  filter: brightness(1.5);
+}
+.gate-title {
+  margin: 14px 0 12px;
+  font-size: clamp(24px, 5.4vw, 40px);
+  font-weight: 700;
+  letter-spacing: .1em;
+  line-height: 1.1;
+  color: #EDD8EA;
+  text-shadow: 0 0 34px rgba(167,94,155,.55);
+}
+.gate-body {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #9AA0B2;
+}
+.gate-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* A lone trailing stat cell should fill the row rather than sit half-empty. */
+.results-grid > div:last-child:nth-child(odd) { grid-column: span 2; }
+
+/* ---------------------------------------------------------
+   DIAGNOSTICS — only appears if something actually broke
+   --------------------------------------------------------- */
+.diag-btn {
+  position: fixed;
+  top: 8px; right: 8px;
+  z-index: 60;
+  padding: 7px 11px;
+  background: #2A0F0D;
+  border: 1px solid #D4453A;
+  border-radius: var(--r);
+  color: #F0A69F;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.diag-btn[hidden] { display: none; }
+
+.diag {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(3,3,7,.92);
+}
+.diag[hidden] { display: none; }
+
+.diag-card {
+  width: min(640px, 100%);
+  max-height: 80dvh;
+  overflow-y: auto;
+  padding: 22px;
+  background: var(--slab);
+  border: 1px solid var(--edge);
+  border-top: 3px solid #D4453A;
+  border-radius: var(--r);
+}
+.diag-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: #4A4F61;
+}
+.diag-title { margin: 8px 0 16px; font-size: 18px; letter-spacing: .04em; }
+.diag-list { margin: 0 0 20px; padding-left: 20px; }
+.diag-list li {
+  margin-bottom: 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #C7CBD8;
+  overflow-wrap: anywhere;
+}
+.diag-list b { color: #E4574A; }
+.diag-list span { display: block; margin-top: 4px; color: #6C7284; }

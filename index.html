@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Pulse Ascent — a timing tower</title>
+<title>Fresh's Pulses of Hell</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -11,14 +11,25 @@
 </head>
 <body>
 
+<button class="diag-btn" id="diagBtn" type="button" hidden>&#9888; <b id="diagCount">0</b></button>
+
+<div class="diag" id="diagPanel" hidden>
+  <div class="diag-card">
+    <p class="diag-eyebrow">Build <b id="diagBuild">—</b></p>
+    <h3 class="diag-title">What went wrong</h3>
+    <ol class="diag-list" id="diagList"></ol>
+    <button class="btn" id="diagClose" type="button">Close</button>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- ============ SELECT SCREEN ============ -->
   <section class="screen is-active" id="screen-select">
     <header class="masthead">
       <div class="mast-left">
-        <h1 class="wordmark">PULSE<span>ASCENT</span></h1>
-        <p class="tagline">Climb the chart. One key at a time.</p>
+        <h1 class="wordmark">FRESH’S<span>PULSES OF HELL</span></h1>
+        <p class="tagline">Fifteen rungs. Start at the bottom.</p>
       </div>
       <div class="mast-right">
         <label class="toggle">
@@ -43,9 +54,22 @@
       </div>
     </div>
 
+
+    <div class="gate" id="gate" hidden>
+      <div class="gate-card" role="alertdialog" aria-labelledby="gateTitle">
+        <p class="gate-eyebrow" id="gateDiff">—</p>
+        <h2 class="gate-title" id="gateTitle">BEYOND HUMAN LIMITS</h2>
+        <p class="gate-body" id="gateBody">—</p>
+        <div class="gate-actions">
+          <button class="btn btn-primary" id="gateGo" type="button">Enter anyway</button>
+          <button class="btn" id="gateBack" type="button">Step back</button>
+        </div>
+      </div>
+    </div>
     <footer class="legend">
       <span class="legend-item"><i class="dot" style="background:#5B9A4C"></i>Standard</span>
       <span class="legend-item"><i class="dot" style="background:#0000FF"></i>Soul Crushing</span>
+      <span class="legend-item"><i class="dot" style="background:#A75E9B"></i>Mind Breaking</span>
       <span class="legend-item"><i class="dot" style="background:#635F62"></i>Joke</span>
       <span class="legend-note">Colors follow the EToH / JToH difficulty chart.</span>
     </footer>
@@ -96,6 +120,7 @@
         <div><dt>Great</dt><dd id="resGreat">—</dd></div>
         <div><dt>Good</dt><dd id="resGood">—</dd></div>
         <div><dt>Missed</dt><dd id="resMiss">—</dd></div>
+        <div><dt>Ghost taps</dt><dd id="resGhost">—</dd></div>
         <div><dt>Mean offset</dt><dd id="resOffset">—</dd></div>
       </dl>
 

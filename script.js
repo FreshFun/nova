@@ -5,6 +5,65 @@
    ========================================================= */
 'use strict';
 
+const BUILD = 'b8';
+
+/* ---------------------------------------------------------
+   0. DIAGNOSTICS
+   The console outside this page only ever sees "Script error." — details are
+   stripped crossing the origin boundary. Catching errors in here keeps the
+   message, line and stack intact and puts them on screen.
+   --------------------------------------------------------- */
+const ERRORS = [];
+
+function logError(where, err) {
+  const msg = (err && err.message) ? err.message : String(err);
+  const stack = (err && err.stack) ? String(err.stack).split('\n').slice(0, 3).join(' | ') : '';
+  const last = ERRORS[ERRORS.length - 1];
+  if (last && last.msg === msg && last.where === where) { last.count++; }
+  else ERRORS.push({ where, msg, stack, count: 1 });
+  if (ERRORS.length > 12) ERRORS.shift();
+  showErrorBadge();
+}
+
+/* Wraps any callback the browser calls into, so one failure never kills a loop. */
+function guard(where, fn) {
+  return function () {
+    try { return fn.apply(this, arguments); }
+    catch (err) { logError(where, err); }
+  };
+}
+
+window.addEventListener('error', ev => {
+  logError('page', ev.error || { message: `${ev.message} @ line ${ev.lineno}:${ev.colno}` });
+});
+window.addEventListener('unhandledrejection', ev => logError('promise', ev.reason));
+
+function showErrorBadge() {
+  const btn = document.querySelector('#diagBtn');
+  if (!btn) return;
+  btn.hidden = false;
+  document.querySelector('#diagCount').textContent =
+    ERRORS.reduce((n, e) => n + e.count, 0);
+}
+
+function renderDiagnostics() {
+  document.querySelector('#diagBuild').textContent = BUILD;
+  const list = document.querySelector('#diagList');
+  list.innerHTML = '';
+  if (!ERRORS.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Nothing caught in here. Any error you saw came from outside the game.';
+    list.appendChild(li);
+  }
+  ERRORS.forEach(e => {
+    const li = document.createElement('li');
+    li.innerHTML = `<b>${e.where}${e.count > 1 ? ` ×${e.count}` : ''}</b> — ${e.msg}` +
+                   (e.stack ? `<span>${e.stack}</span>` : '');
+    list.appendChild(li);
+  });
+  document.querySelector('#diagPanel').hidden = false;
+}
+
 /* ---------------------------------------------------------
    1. THE DIFFICULTY CHART
    --------------------------------------------------------- */
@@ -33,31 +92,83 @@ const DIFFICULTIES = [
     blurb:'Fast enough that reading ahead and reacting become different skills.' },
   { id:'catastrophic', name:'Catastrophic', color:'#FFFFFF', band:'Soul Crushing',
     blurb:'A wall of white. The chart stops being a rhythm and becomes a texture.' },
-  { id:'horrific',     name:'Horrific',     color:'#A75E9B', band:'Soul Crushing',
+  { id:'horrific',     name:'Horrific',     color:'#A75E9B', band:'Mind Breaking',
     blurb:'Beyond reasonable. Built to be looked at more than it is ever cleared.' },
-  { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Soul Crushing',
+  { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Mind Breaking',
     blurb:'The top of the canon chart. Good luck. Practice mode exists for a reason.' },
   { id:'nil',          name:'nil',          color:'#635F62', band:'Joke',
     blurb:'Not a real difficulty. Not a real chart. Press keys and see what happens.' },
 ];
 
-/* Two pulses per difficulty. Easy is the pair you asked for. */
+/* Every run on the chart. Edit freely — `name` and `abbr` drive the whole UI.
+   kind:'citadel' makes a much longer run, the way citadels work in EToH.
+   tutorial:true marks the teaching run: gentler chart, on-screen tips, no fail. */
 const PULSES = {
-  effortless:   [['Pulse of First Steps','PoFS'],        ['Pulse of Gentle Rhythm','PoGR']],
-  easy:         [['Pulse of a New Beginning','PoFAB'],   ['Pulse of Easy Timing','PoET']],
-  medium:       [['Pulse of Steady Hands','PoSH'],       ['Pulse of Middle Ground','PoMG']],
-  hard:         [['Pulse of Rising Tempo','PoRT'],       ['Pulse of Harsh Truth','PoHT']],
-  difficult:    [['Pulse of Divided Focus','PoDF'],      ['Pulse of the Broken Metronome','PoBM']],
-  challenging:  [['Pulse of Crimson Cadence','PoCC'],    ['Pulse of Unyielding Beat','PoUB']],
-  intense:      [['Pulse of Iron Discipline','PoID'],    ['Pulse of Silent Machinery','PoSM']],
-  remorseless:  [['Pulse of Neon Malice','PoNM'],        ['Pulse of Endless Repetition','PoER']],
-  insane:       [['Pulse of Deep Blue','PoDB'],          ['Pulse of Shattered Sanity','PoSS']],
-  extreme:      [['Pulse of Astral Drift','PoAD'],       ['Pulse of Violent Currents','PoVC']],
-  terrifying:   [['Pulse of Frozen Nerves','PoFN'],      ['Pulse of Glacial Terror','PoGT']],
-  catastrophic: [['Pulse of Blinding White','PoBW'],     ['Pulse of Total Collapse','PoTC']],
-  horrific:     [['Pulse of Violet Dread','PoVD'],       ['Pulse of Hollow Echoes','PoHE']],
-  unreal:       [['Pulse of Impossible Geometry','PoIG'],['Pulse of the Void Beyond','PoVB']],
-  nil:          [['Pulse of nil','Ponil'],               ['Pulse of Nothing At All','PoNAA']],
+  effortless: [
+    { name:'Pulse of A Simple Time',                         abbr:'PoAST', tutorial:true },
+  ],
+  easy: [
+    { name:'Pulse of a New Beginning',                       abbr:'PoFAB' },
+    { name:'Pulse of Easy Timing',                           abbr:'PoET' },
+  ],
+  medium: [
+    { name:'Pulse of Inconsiderate Actions',                 abbr:'PoIA' },
+    { name:'Pulse of Middle Ground',                         abbr:'PoMG' },
+  ],
+  hard: [
+    { name:'Pulse of Rising Tempo',                          abbr:'PoRT' },
+    { name:'Pulse of Harsh Truth',                           abbr:'PoHT' },
+  ],
+  difficult: [
+    { name:'Pulse of Divided Focus',                         abbr:'PoDF' },
+    { name:'Pulse of the Broken Metronome',                  abbr:'PoBM' },
+  ],
+  challenging: [
+    { name:'Pulse of Crimson Cadence',                       abbr:'PoCC' },
+    { name:'Pulse of Unyielding Beat',                       abbr:'PoUB' },
+  ],
+  intense: [
+    { name:'Pulse of Iron Discipline',                       abbr:'PoID' },
+    { name:'Pulse of Silent Machinery',                      abbr:'PoSM' },
+  ],
+  remorseless: [
+    { name:'Pulse of Neon Malice',                           abbr:'PoNM' },
+    { name:'Pulse of Endless Repetition',                    abbr:'PoER' },
+  ],
+  insane: [
+    { name:'Citadel of Making The World Better',              abbr:'CoMTWB', kind:'citadel' },
+    { name:'Pulse of Shattered Sanity',                      abbr:'PoSS' },
+  ],
+  extreme: [
+    { name:'Pulse of Astral Drift',                          abbr:'PoAD' },
+    { name:'Pulse of Violent Currents',                      abbr:'PoVC' },
+  ],
+  terrifying: [
+    { name:'Pulse of Frozen Nerves',                         abbr:'PoFN' },
+    { name:'Pulse of Glacial Terror',                        abbr:'PoGT' },
+  ],
+  catastrophic: [
+    { name:'Pulse of Blinding White',                        abbr:'PoBW' },
+    { name:'Pulse of Total Collapse',                        abbr:'PoTC' },
+  ],
+  horrific: [
+    { name:'Pulse of Violet Dread',                          abbr:'PoVD' },
+    { name:'Pulse of Hollow Echoes',                         abbr:'PoHE' },
+  ],
+  unreal: [
+    { name:'Pulse of Impossible Geometry',                   abbr:'PoIG' },
+    { name:'Pulse of the Void Beyond',                       abbr:'PoVB' },
+  ],
+  nil: [
+    { name:'Pulse of nil',                                   abbr:'Ponil' },
+    { name:'Pulse of Nothing At All',                        abbr:'PoNAA' },
+  ],
+};
+
+/* Banner shown on a rung, and the gate that stands in front of a run. */
+const BAND_WARNING = {
+  'Soul Crushing': { text:'EXTREMELY DIFFICULT', note:'Frame-tight windows and streams that never let up.' },
+  'Mind Breaking': { text:'BEYOND HUMAN LIMITS', note:'Charted to be looked at. Clearing one is not the expectation.' },
 };
 
 /* Per-tier tuning. index = position on the chart. */
@@ -70,22 +181,33 @@ function laneCount(t) {
   return 4;               // Hard and up
 }
 
-function levelSpec(tier, variant) {
-  const [name, abbr] = PULSES[DIFFICULTIES[tier].id][variant];
-  const bpm = BPMS[tier] + variant * 6;
+function levelSpec(tier, i) {
+  const entry = PULSES[DIFFICULTIES[tier].id][i];
+  const citadel = entry.kind === 'citadel';
+  const tutorial = !!entry.tutorial;
+  const bpm = BPMS[tier] + i * 6;
   const f = tier / (DIFFICULTIES.length - 1);
+
+  let bars = 16 + Math.round(f * 12) + i * 2;
+  if (citadel) bars = Math.round(bars * 2.6); // citadels run far longer
+  if (tutorial) bars = 12;
+
   return {
-    name, abbr, tier, variant, bpm,
+    name: entry.name,
+    abbr: entry.abbr,
+    kind: citadel ? 'citadel' : 'pulse',
+    tutorial, tier, variant: i, bpm, bars,
     lanes: laneCount(tier),
-    bars: 16 + Math.round(f * 12) + variant * 2,
-    approach: Math.max(0.42, 1.5 - tier * 0.065 - variant * 0.02),
-    windowScale: Math.max(0.42, 1.25 - tier * 0.055 - variant * 0.015),
-    intensity: Math.min(1, f + variant * 0.05),
+    approach: tutorial ? 1.65 : Math.max(0.42, 1.5 - tier * 0.065 - i * 0.02),
+    windowScale: tutorial ? 1.5 : Math.max(0.42, 1.25 - tier * 0.055 - i * 0.015),
+    intensity: tutorial ? 0 : Math.min(1, f + i * 0.05),
   };
 }
 
 const LEVELS = {};
-DIFFICULTIES.forEach((d, t) => { LEVELS[d.id] = [levelSpec(t, 0), levelSpec(t, 1)]; });
+DIFFICULTIES.forEach((d, t) => {
+  LEVELS[d.id] = PULSES[d.id].map((_, i) => levelSpec(t, i));
+});
 
 /* ---------------------------------------------------------
    2. CHART GENERATION
@@ -111,7 +233,39 @@ function pick(rng, table) {
   return Object.keys(table)[0];
 }
 
+function finalizeChart(notes, spec) {
+  const beatDur = 60 / spec.bpm;
+  notes.forEach(n => { n.time = n.beat * beatDur; });
+  notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
+  return notes;
+}
+
+/* The teaching run is hand-written, not generated: one key, plain quarters,
+   with room to breathe between the phrases that introduce something new. */
+function tutorialChart(spec) {
+  const bars = [
+    [0, 1, 2, 3],
+    [0, 2],
+    [0, 1, 2, 3],
+    [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+    [0, 2],
+    [0, 1, 2, 3],
+    [0, 0.5, 1, 2, 2.5, 3],
+    [0, 1, 2, 3],
+    [0, 0.5, 1, 1.5, 2, 3],
+    [0, 2],
+    [0, 1, 2, 3],
+    [0],
+  ];
+  const notes = [];
+  bars.forEach((bar, i) => bar.forEach(b =>
+    notes.push({ beat: i * 4 + b, lane: 0, time: 0, judged: false })));
+  return finalizeChart(notes, spec);
+}
+
 function generateChart(spec) {
+  if (spec.tutorial) return tutorialChart(spec);
+
   const rng = mulberry32(hashStr(spec.name + spec.bpm));
   const f = spec.intensity;
   const lanes = spec.lanes;
@@ -166,11 +320,7 @@ function generateChart(spec) {
 
   // Always land the final downbeat.
   push(spec.bars * 4, Math.floor(lanes / 2));
-
-  const beatDur = 60 / spec.bpm;
-  notes.forEach(n => { n.time = n.beat * beatDur; });
-  notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
-  return notes;
+  return finalizeChart(notes, spec);
 }
 
 /* ---------------------------------------------------------
@@ -208,7 +358,8 @@ function rgba(hex, a) {
    4. AUDIO
    --------------------------------------------------------- */
 const Sound = {
-  ctx: null, bus: null, noise: null, volume: 0.7,
+  ctx: null, bus: null, music: null, noise: null, volume: 0.7,
+  voices: 0, failures: 0, disabled: false,
 
   init() {
     if (this.ctx) return;
@@ -217,61 +368,154 @@ const Sound = {
     this.bus = this.ctx.createGain();
     this.bus.gain.value = this.volume;
     const comp = this.ctx.createDynamicsCompressor();
+    comp.threshold.value = -14;
+    comp.ratio.value = 6;
     this.bus.connect(comp).connect(this.ctx.destination);
 
-    const len = this.ctx.sampleRate * 0.5;
+    const len = Math.floor(this.ctx.sampleRate * 0.5);
     this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
   },
 
-  setVolume(v) { this.volume = v; if (this.bus) this.bus.gain.value = v; },
-  now() { return this.ctx.currentTime; },
-
-  tone(t, freq, dur, type, gain) {
-    const o = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(gain, t + 0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(this.bus);
-    o.start(t); o.stop(t + dur + 0.02);
+  /* A browser keeps the audio clock suspended until a gesture, and resume() is
+     async. Starting a run before it woke up is what left songs silent. */
+  ready(cb) {
+    this.init();
+    let fired = false;
+    const go = () => { if (!fired) { fired = true; cb(); } };
+    if (this.ctx.state === 'running') { go(); return; }
+    const p = this.ctx.resume();
+    if (p && p.then) p.then(go).catch(go);
+    setTimeout(go, 350);
   },
 
-  burst(t, dur, freq, q, gain) {
-    const s = this.ctx.createBufferSource();
-    s.buffer = this.noise;
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(gain, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f).connect(g).connect(this.bus);
-    s.start(t); s.stop(t + dur + 0.02);
+  /* Each run gets its own bus so quitting cuts scheduled notes instantly. */
+  openRun() {
+    this.closeRun();
+    if (this.disabled || !this.ctx) return;
+    this.music = this.ctx.createGain();
+    this.music.gain.value = 1;
+    this.music.connect(this.bus);
+  },
+  closeRun() {
+    if (!this.music) return;
+    const m = this.music, t = this.ctx.currentTime;
+    this.music = null;
+    try {
+      m.gain.cancelScheduledValues(t);
+      m.gain.setValueAtTime(m.gain.value, t);
+      m.gain.linearRampToValueAtTime(0, t + 0.05);
+    } catch (e) { /* node already torn down */ }
+    setTimeout(() => { try { m.disconnect(); } catch (e) {} }, 400);
+  },
+
+  out() { return this.music || this.bus; },
+  setVolume(v) { this.volume = v; if (this.bus) this.bus.gain.value = v; },
+  now() { return this.ctx ? this.ctx.currentTime : 0; },
+  safe(t) { return Math.max(t, this.ctx.currentTime + 0.004); },
+
+  /* Mobile Safari caps how many audio nodes may be alive at once and throws
+     once you pass it — which killed the whole frame loop on dense charts.
+     Voices are counted, released when they end, and optional sounds step
+     aside when the budget is tight. */
+  free(limit) { return this.voices < (limit || 26); },
+  track(src, nodes) {
+    this.voices++;
+    src.onended = () => {
+      this.voices = Math.max(0, this.voices - 1);
+      for (const n of nodes) { try { n.disconnect(); } catch (e) {} }
+    };
+  },
+  /* Audio must never be able to take the game down with it. */
+  fail() {
+    this.voices = 0;
+    if (++this.failures > 12) { this.disabled = true; this.closeRun(); }
+  },
+
+  tone(t, freq, dur, type, gain, dest) {
+    if (this.disabled || !this.ctx) return;
+    try {
+      t = this.safe(t);
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(gain, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(dest || this.out());
+      o.start(t); o.stop(t + dur + 0.02);
+      this.track(o, [o, g]);
+    } catch (e) { this.fail(); }
+  },
+
+  burst(t, dur, freq, q, gain, dest) {
+    if (this.disabled || !this.ctx) return;
+    try {
+      t = this.safe(t);
+      const s = this.ctx.createBufferSource();
+      s.buffer = this.noise;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f).connect(g).connect(dest || this.out());
+      s.start(t); s.stop(t + dur + 0.02);
+      this.track(s, [s, f, g]);
+    } catch (e) { this.fail(); }
   },
 
   kick(t) {
-    const o = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    o.frequency.setValueAtTime(160, t);
-    o.frequency.exponentialRampToValueAtTime(44, t + 0.12);
-    g.gain.setValueAtTime(0.85, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-    o.connect(g).connect(this.bus);
-    o.start(t); o.stop(t + 0.25);
+    if (this.disabled || !this.ctx) return;
+    try {
+      t = this.safe(t);
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.frequency.setValueAtTime(160, t);
+      o.frequency.exponentialRampToValueAtTime(44, t + 0.12);
+      g.gain.setValueAtTime(0.85, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      o.connect(g).connect(this.out());
+      o.start(t); o.stop(t + 0.25);
+      this.track(o, [o, g]);
+    } catch (e) { this.fail(); }
   },
 
   snare(t) { this.burst(t, 0.16, 1900, 0.8, 0.35); this.tone(t, 190, 0.09, 'triangle', 0.16); },
   hat(t, loud) { this.burst(t, loud ? 0.05 : 0.03, 8200, 1.2, loud ? 0.14 : 0.07); },
   tick(t) { this.tone(t, 1400, 0.06, 'square', 0.18); },
 
+  /* UNUSED alternative hit sound — swap it back into hit() if you ever want it.
+     Pickup chime in the spirit of Terraria's mana star. */
+  star(rate, gain) {
+    if (this.disabled || !this.ctx) return;
+    const t = this.ctx.currentTime + 0.002;
+    const f0 = 1245 * rate;
+    for (const [m, a] of [[1, 1], [2.02, 0.55], [3.01, 0.30], [4.35, 0.16]]) {
+      try {
+        const o = this.ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(f0 * m * 0.94, t);
+        o.frequency.exponentialRampToValueAtTime(f0 * m, t + 0.035);
+        const g = this.ctx.createGain();
+        const dur = 0.28 / (1 + (m - 1) * 0.55);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(gain * a, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g).connect(this.bus);
+        o.start(t); o.stop(t + dur + 0.02);
+        this.track(o, [o, g]);
+      } catch (e) { this.fail(); }
+    }
+  },
+
   hit(kind) {
-    if (!this.ctx) return;
+    if (this.disabled || !this.ctx) return;
     const t = this.ctx.currentTime;
-    if (kind === 'miss') { this.tone(t, 96, 0.16, 'sawtooth', 0.16); return; }
+    if (kind === 'miss') { this.tone(t, 96, 0.16, 'sawtooth', 0.16, this.bus); return; }
     const f = kind === 'perfect' ? 1320 : kind === 'great' ? 1050 : 780;
-    this.tone(t, f, 0.075, 'square', 0.11);
+    this.tone(t, f, 0.075, 'square', 0.11, this.bus);
   },
 };
 
@@ -287,8 +531,9 @@ const G = {
   running: false, ended: false, practice: false,
   score: 0, combo: 0, maxCombo: 0,
   counts: { perfect: 0, great: 0, good: 0, miss: 0 },
-  offsets: [], health: 100,
-  laneDown: [], flashes: [], sparks: [], popup: null,
+  offsets: [], health: 100, ghosts: 0, ghostStreak: 0, deathBy: '',
+  laneDown: [], flashes: [], sparks: [], popup: null, armed: false,
+  perf0: 0, lastFrame: 0, lastAudio: 0,
   endTime: 0, playHex: '#fff',
 };
 
@@ -303,6 +548,16 @@ const LANE_KEYS = {
 const LANE_LABELS = { 1: ['SPACE'], 2: ['F', 'J'], 3: ['F', 'SPACE', 'J'], 4: ['D', 'F', 'J', 'K'] };
 
 const BASE_WINDOWS = { perfect: 0.055, great: 0.100, good: 0.152 };
+
+/* Shown during the teaching run, keyed to the beat they should appear on. */
+const TUTORIAL_TIPS = [
+  [0,  'Blocks fall toward the line. Press SPACE the moment one lands on it.'],
+  [8,  'The closer to the line, the better the judgment.'],
+  [16, 'Minus milliseconds means early. Plus means late.'],
+  [24, 'Clean hits in a row build your combo.'],
+  [36, 'Nothing here can fail you. Try leaning early, then late.'],
+  [44, 'One more rule out there: hitting nothing costs health. Do not mash.'],
+];
 
 /* ---------------------------------------------------------
    6. DOM
@@ -365,6 +620,7 @@ function renderDetail() {
   const tier = DIFFICULTIES.indexOf(d);
   const levels = LEVELS[d.id];
   const keys = LANE_LABELS[laneCount(tier)].map(k => `<kbd>${k}</kbd>`).join('');
+  const warn = BAND_WARNING[d.band];
 
   const detail = $('#detail');
   detail.innerHTML = `
@@ -372,23 +628,26 @@ function renderDetail() {
       <div class="detail-orb"></div>
       <div>
         <h2 class="detail-name">${d.name}</h2>
-        <p class="detail-meta">Rung ${String(tier + 1).padStart(2, '0')} / ${DIFFICULTIES.length} · ${d.band} · ${laneCount(tier)} lane${laneCount(tier) > 1 ? 's' : ''}</p>
+        <p class="detail-meta">Rung ${String(tier + 1).padStart(2, '0')} / ${DIFFICULTIES.length} · ${d.band} · ${laneCount(tier)} lane${laneCount(tier) > 1 ? 's' : ''} · ${BUILD}</p>
       </div>
     </div>
+    ${warn ? `<div class="warn warn-${d.band === 'Mind Breaking' ? 'mind' : 'sc'}">
+      <strong>${warn.text}</strong><span>${warn.note}</span></div>` : ''}
     <p class="detail-blurb">${d.blurb}</p>
     <div class="pulses" id="pulseList"></div>
     <p class="keys-hint">Keys for this rung: ${keys} &nbsp;·&nbsp; arrow keys work too &nbsp;·&nbsp; <kbd>Esc</kbd> leaves a run</p>
   `;
 
   const list = $('#pulseList');
-  levels.forEach((spec, i) => {
+  levels.forEach(spec => {
     const best = BEST[spec.name];
+    const badge = spec.tutorial ? 'Tutorial' : spec.kind === 'citadel' ? 'Citadel' : '';
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pulse';
     btn.innerHTML = `
-      <span>
-        <span class="pulse-abbr">${spec.abbr}</span>
+      <span class="pulse-text">
+        <span class="pulse-abbr">${spec.abbr}${badge ? `<i class="pulse-badge">${badge}</i>` : ''}</span>
         <span class="pulse-name">${spec.name}</span>
         <span class="pulse-specs">
           <span>${spec.bpm} BPM</span>
@@ -398,10 +657,29 @@ function renderDetail() {
         </span>
       </span>
       <span class="pulse-best ${best ? '' : 'is-empty'}">${best || '—'}</span>`;
-    btn.addEventListener('click', () => startLevel(spec, d));
+    btn.addEventListener('click', () => requestLevel(spec, d));
     list.appendChild(btn);
   });
 }
+
+/* Mind Breaking rungs stand behind a gate rather than starting on a stray click. */
+let pendingRun = null;
+
+function requestLevel(spec, diff) {
+  if (diff.band === 'Mind Breaking') {
+    pendingRun = { spec, diff };
+    $('#gateDiff').textContent = `${diff.name} · ${spec.abbr}`;
+    $('#gateBody').textContent =
+      `${spec.name} runs at ${spec.bpm} BPM with a ±${(BASE_WINDOWS.good * spec.windowScale * 1000).toFixed(0)} ms window. ` +
+      `Nothing about it was built to be fair. Practice mode turns off failing.`;
+    $('#gate').hidden = false;
+    $('#gateGo').focus();
+    return;
+  }
+  startLevel(spec, diff);
+}
+
+function closeGate() { $('#gate').hidden = true; pendingRun = null; }
 
 /* ---------------------------------------------------------
    7. CANVAS SIZING
@@ -415,7 +693,7 @@ function resize() {
   canvas.height = Math.round(H * dpr);
   ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', guard('resize', resize));
 
 function geometry() {
   const lanes = G.spec.lanes;
@@ -430,21 +708,23 @@ function geometry() {
    8. START / STOP A RUN
    --------------------------------------------------------- */
 function startLevel(spec, diff) {
+  stopRun();
   Sound.init();
-  if (Sound.ctx.state === 'suspended') Sound.ctx.resume();
 
   G.spec = spec;
   G.diff = diff;
   G.playHex = playColor(diff.color);
   G.notes = generateChart(spec);
   G.beatDur = 60 / spec.bpm;
-  G.practice = $('#practiceToggle').checked;
+  G.practice = $('#practiceToggle').checked || spec.tutorial;
   G.score = 0; G.combo = 0; G.maxCombo = 0;
   G.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   G.offsets = []; G.health = 100;
+  G.ghosts = 0; G.ghostStreak = 0; G.deathBy = '';
+  frameErrors = 0; Sound.failures = 0;
   G.laneDown = new Array(spec.lanes).fill(0);
   G.flashes = []; G.sparks = []; G.popup = null;
-  G.ended = false; G.running = true;
+  G.ended = false; G.running = true; G.armed = false;
   G.endTime = G.notes[G.notes.length - 1].time + 1.6;
 
   $('#hudLevel').textContent = `${spec.abbr} · ${spec.name}`;
@@ -457,23 +737,34 @@ function startLevel(spec, diff) {
   buildTouchRow(spec.lanes);
   showScreen('game');
   resize();
+  $('#countdown').textContent = 'READY';
 
-  const lead = 4 * G.beatDur + 0.6;
-  G.startTime = Sound.now() + lead;
-  G.nextStep = -16; // one bar of count-in
+  Sound.ready(guard('run start', () => {
+    if (!G.running || G.spec !== spec) return; // player already left
+    Sound.openRun();
+    G.armed = true;
 
-  clearInterval(G.timer);
-  G.timer = setInterval(scheduleMusic, 25);
-  scheduleMusic();
+    const lead = 4 * G.beatDur + 0.7;
+    G.startTime = Sound.now() + lead;
+    G.perf0 = performance.now() / 1000 + lead;
+    G.lastFrame = 0;
+    G.lastAudio = 0;
+    G.nextStep = -16; // one bar of count-in
 
-  cancelAnimationFrame(G.raf);
-  G.raf = requestAnimationFrame(frame);
+    clearInterval(G.timer);
+    G.timer = setInterval(guard('scheduler', scheduleMusic), 60);
+    scheduleMusic();
+
+    cancelAnimationFrame(G.raf);
+    G.raf = requestAnimationFrame(frame);
+  }));
 }
 
 function stopRun() {
   G.running = false;
   clearInterval(G.timer);
   cancelAnimationFrame(G.raf);
+  if (Sound.ctx) Sound.closeRun();
 }
 
 function quitRun() {
@@ -488,9 +779,18 @@ function quitRun() {
    --------------------------------------------------------- */
 function stepTime(step) { return G.startTime + step * (G.beatDur / 4); }
 
+/* Enough lookahead to survive a throttled timer, small enough that a dense
+   chart never has a crowd of live audio nodes. The render loop pumps this too,
+   so it does not need to reach far ahead. */
+const LOOKAHEAD = 0.45;
+
 function scheduleMusic() {
-  if (!G.running) return;
-  const horizon = Sound.now() + 0.18;
+  try { scheduleMusicInner(); } catch (err) { logError('audio', err); audioPanic(err); }
+}
+
+function scheduleMusicInner() {
+  if (!G.running || !Sound.music || Sound.disabled) return;
+  const horizon = Sound.now() + LOOKAHEAD;
   const totalSteps = G.spec.bars * 16 + 8;
   while (stepTime(G.nextStep) < horizon && G.nextStep < totalSteps) {
     const s = G.nextStep, t = stepTime(s);
@@ -505,10 +805,10 @@ function scheduleMusic() {
 
       if (inBar % 4 === 0) Sound.kick(t);
       if (inBar === 4 || inBar === 12) Sound.snare(t);
-      if (inBar % 2 === 0) Sound.hat(t, inBar % 4 === 2);
+      if (inBar % 2 === 0 && Sound.free()) Sound.hat(t, inBar % 4 === 2);
       if (inBar === 0) Sound.tone(t, midiFreq(rootMidi), G.beatDur * 1.6, 'sawtooth', 0.10);
       if (inBar === 8) Sound.tone(t, midiFreq(rootMidi + 7), G.beatDur * 0.9, 'sawtooth', 0.07);
-      if (f > 0.28 && inBar % 4 === 2) {
+      if (f > 0.28 && inBar % 4 === 2 && Sound.free(22)) {
         const arp = [0, 3, 7, 10][(inBar / 4 + bar) % 4];
         Sound.tone(t, midiFreq(rootMidi + 24 + arp), 0.12, 'square', 0.045 + f * 0.03);
       }
@@ -525,10 +825,26 @@ function windows() {
   return { perfect: BASE_WINDOWS.perfect * s, great: BASE_WINDOWS.great * s, good: BASE_WINDOWS.good * s };
 }
 
-function songTime() { return Sound.now() - G.startTime; }
+/* Gameplay runs on the wall clock. The audio clock is the better metronome,
+   but a browser that refuses to wake it leaves it frozen at zero — and a frozen
+   clock meant notes never fell and keys did nothing. Now the run continues
+   regardless and gently re-syncs to the audio clock whenever it is alive. */
+function songTime() { return performance.now() / 1000 - G.perf0; }
+
+/* Backgrounding a tab stops rAF while time keeps moving. Coming back used to
+   dump every note that fell during the gap straight into misses and kill you,
+   so a long stall rewinds the clocks and restarts the music cleanly instead. */
+function resyncAfterStall(gap) {
+  const shift = gap - 1 / 60;
+  G.perf0 += shift;
+  G.startTime += shift;
+  if (Sound.ctx && Sound.music) { Sound.closeRun(); Sound.openRun(); }
+  G.lastAudio = 0;
+  G.nextStep = Math.floor(songTime() / (G.beatDur / 4)) + 1;
+}
 
 function pressLane(lane) {
-  if (!G.running || G.ended) return;
+  if (!G.running || G.ended || !G.armed) return;
   G.laneDown[lane] = performance.now();
 
   const now = songTime();
@@ -543,7 +859,7 @@ function pressLane(lane) {
     if (a <= w.good && a < bestAbs) { best = n; bestAbs = a; }
   }
 
-  if (!best) return;
+  if (!best) { ghostTap(lane); return; }
   const dt = now - best.time;
   const a = Math.abs(dt);
   const kind = a <= w.perfect ? 'perfect' : a <= w.great ? 'great' : 'good';
@@ -551,6 +867,21 @@ function pressLane(lane) {
 }
 
 function releaseLane(lane) { G.laneDown[lane] = 0; }
+
+/* Hitting air costs you. One stray tap is cheap; a mash escalates fast, so
+   holding the keys down through a section drains the bar and ends the run. */
+function ghostTap(lane) {
+  if (G.spec.tutorial) return; // the teaching run invites experimenting
+  G.ghosts++;
+  G.ghostStreak++;
+  G.combo = 0;
+  G.score = Math.max(0, G.score - 40);
+  if (!G.practice) G.health -= Math.min(16, 3 + G.ghostStreak * 1.6);
+  Sound.hit('miss');
+  G.popup = { kind: 'spam', t: performance.now(), dt: 0 };
+  G.flashes.push({ lane, t: performance.now(), kind: 'spam' });
+  if (!G.practice && G.health <= 0) { G.deathBy = 'spam'; finish(true); }
+}
 
 function judge(note, kind, dt) {
   if (G.ended) return;
@@ -564,6 +895,7 @@ function judge(note, kind, dt) {
     Sound.hit('miss');
   } else {
     G.combo++;
+    G.ghostStreak = 0;
     G.maxCombo = Math.max(G.maxCombo, G.combo);
     const base = kind === 'perfect' ? 350 : kind === 'great' ? 220 : 110;
     G.score += Math.round(base * (1 + Math.min(G.combo, 60) / 120));
@@ -574,22 +906,28 @@ function judge(note, kind, dt) {
   }
   G.popup = { kind, t: performance.now(), dt };
 
-  if (!G.practice && G.health <= 0) finish(true);
+  if (!G.practice && G.health <= 0) { G.deathBy = G.deathBy || 'misses'; finish(true); }
 }
 
-document.addEventListener('keydown', e => {
+document.addEventListener('pointerdown', guard('wake audio', () => {
+  if (Sound.ctx && Sound.ctx.state !== 'running') Sound.ctx.resume();
+}));
+
+document.addEventListener('keydown', guard('keydown', e => {
+  if (Sound.ctx && Sound.ctx.state !== 'running') Sound.ctx.resume();
+  if (e.code === 'Escape' && !$('#gate').hidden) { closeGate(); return; }
   if (e.code === 'Escape' && screens.game.classList.contains('is-active')) { quitRun(); return; }
   if (!G.running || e.repeat) return;
   const map = LANE_KEYS[G.spec.lanes];
   for (let i = 0; i < map.length; i++) {
     if (map[i].includes(e.code)) { e.preventDefault(); pressLane(i); return; }
   }
-});
-document.addEventListener('keyup', e => {
+}));
+document.addEventListener('keyup', guard('keyup', e => {
   if (!G.spec) return;
   const map = LANE_KEYS[G.spec.lanes];
   for (let i = 0; i < map.length; i++) if (map[i].includes(e.code)) releaseLane(i);
-});
+}));
 
 function buildTouchRow(lanes) {
   const row = $('#touchRow');
@@ -597,7 +935,7 @@ function buildTouchRow(lanes) {
   for (let i = 0; i < lanes; i++) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.addEventListener('pointerdown', ev => { ev.preventDefault(); pressLane(i); });
+    b.addEventListener('pointerdown', guard('lane tap', ev => { ev.preventDefault(); pressLane(i); }));
     b.addEventListener('pointerup', () => releaseLane(i));
     b.addEventListener('pointercancel', () => releaseLane(i));
     row.appendChild(b);
@@ -607,8 +945,47 @@ function buildTouchRow(lanes) {
 /* ---------------------------------------------------------
    11. FRAME LOOP
    --------------------------------------------------------- */
+/* Audio is the only part of this that talks to the platform, so it is the only
+   part that can throw for reasons outside the game. When it does, the run
+   continues in silence instead of freezing on the countdown. */
+let frameErrors = 0;
+function audioPanic(err) {
+  if (!Sound.disabled) {
+    Sound.disabled = true;
+    try { Sound.closeRun(); } catch (e) {}
+    clearInterval(G.timer);
+    console.warn('Audio stopped; continuing without music.', err);
+  }
+  if (++frameErrors > 40) quitRun();
+}
+
 function frame() {
   if (!G.running) return;
+  try { stepFrame(); } catch (err) { logError('frame', err); audioPanic(err); }
+  if (G.running) G.raf = requestAnimationFrame(frame);
+}
+
+function stepFrame() {
+
+  const wall = performance.now() / 1000;
+  const wallDelta = G.lastFrame ? wall - G.lastFrame : 0;
+  if (wallDelta > 0.4) resyncAfterStall(wallDelta);
+  G.lastFrame = performance.now() / 1000;
+
+  /* Only trust the audio clock if it is actually ticking. A stalled one that
+     still reports itself as running would otherwise drag the run backwards
+     every frame and pin it on the countdown forever. */
+  const aNow = Sound.ctx ? Sound.now() : 0;
+  const audioDelta = G.lastAudio ? aNow - G.lastAudio : 0;
+  G.lastAudio = aNow;
+  const audioAlive = Sound.ctx && Sound.ctx.state === 'running' &&
+                     Sound.music && audioDelta > wallDelta * 0.5;
+  if (audioAlive) {
+    const drift = (aNow - G.startTime) - (performance.now() / 1000 - G.perf0);
+    if (Math.abs(drift) > 0.003 && Math.abs(drift) < 0.25) G.perf0 -= drift * 0.03;
+  }
+
+  scheduleMusic(); // belt and braces: the interval alone can be throttled
   const now = songTime();
   const w = windows();
 
@@ -622,7 +999,6 @@ function frame() {
   updateHud(now);
 
   if (!G.ended && now > G.endTime) finish(false);
-  G.raf = requestAnimationFrame(frame);
 }
 
 function accuracy() {
@@ -641,6 +1017,7 @@ function updateHud(now) {
 
   const cd = $('#countdown');
   if (now < 0) {
+    if (Sound.ctx && Sound.ctx.state !== 'running') { cd.textContent = 'TAP FOR SOUND'; return; }
     const beats = Math.ceil(-now / G.beatDur);
     cd.textContent = beats > 4 ? 'READY' : String(Math.min(4, beats));
   } else if (cd.textContent) {
@@ -709,11 +1086,12 @@ function draw(now) {
     ctx2d.translate(cx, recY);
     const s = size * (flash ? 1.12 : down ? 1.05 : 1);
     ctx2d.lineWidth = 2;
-    ctx2d.strokeStyle = down || flash ? hex : 'rgba(255,255,255,0.28)';
-    if (flash) { ctx2d.shadowColor = hex; ctx2d.shadowBlur = 26; }
+    const fcol = flash && flash.kind === 'spam' ? '#D4453A' : hex;
+    ctx2d.strokeStyle = down || flash ? fcol : 'rgba(255,255,255,0.28)';
+    if (flash) { ctx2d.shadowColor = fcol; ctx2d.shadowBlur = 26; }
     roundRect(-s / 2, -s / 2, s, s, 8);
     ctx2d.stroke();
-    if (down || flash) { ctx2d.fillStyle = rgba(hex, flash ? 0.35 : 0.16); ctx2d.fill(); }
+    if (down || flash) { ctx2d.fillStyle = rgba(flash ? fcol : hex, flash ? 0.35 : 0.16); ctx2d.fill(); }
     ctx2d.restore();
 
     // key label
@@ -772,11 +1150,24 @@ function draw(now) {
     ctx2d.fillText('COMBO', W / 2, recY * 0.46 + 20);
   }
 
+  // tutorial captions
+  if (G.spec.tutorial) {
+    const beat = now / G.beatDur;
+    let tip = '';
+    for (const [b, text] of TUTORIAL_TIPS) if (beat >= b) tip = text;
+    if (tip) {
+      ctx2d.textAlign = 'center';
+      ctx2d.fillStyle = 'rgba(236,238,245,0.72)';
+      ctx2d.font = '600 15px "Chakra Petch", sans-serif';
+      ctx2d.fillText(tip, W / 2, Math.max(34, recY * 0.16));
+    }
+  }
+
   // judgment popup
   if (G.popup && perf - G.popup.t < 520) {
     const k = (perf - G.popup.t) / 520;
-    const label = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' }[G.popup.kind];
-    const col = G.popup.kind === 'miss' ? '#D4453A'
+    const label = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', spam: 'SPAM' }[G.popup.kind];
+    const col = (G.popup.kind === 'miss' || G.popup.kind === 'spam') ? '#D4453A'
       : G.popup.kind === 'perfect' ? hex
       : G.popup.kind === 'great' ? '#EAECF3' : '#8E93A6';
     ctx2d.globalAlpha = 1 - k * k;
@@ -784,7 +1175,7 @@ function draw(now) {
     ctx2d.fillStyle = col;
     ctx2d.font = '700 26px "Chakra Petch", sans-serif';
     ctx2d.fillText(label, W / 2, recY * 0.72 - k * 14);
-    if (G.popup.kind !== 'miss') {
+    if (G.popup.kind !== 'miss' && G.popup.kind !== 'spam') {
       ctx2d.font = '400 11px "JetBrains Mono", monospace';
       ctx2d.fillStyle = 'rgba(255,255,255,0.4)';
       const ms = G.popup.dt * 1000;
@@ -822,7 +1213,9 @@ function finish(failed) {
   const mean = G.offsets.length
     ? G.offsets.reduce((a, b) => a + b, 0) / G.offsets.length : 0;
 
-  $('#resVerdict').textContent = failed ? 'Tower fallen' : (G.practice ? 'Cleared — practice' : 'Cleared');
+  $('#resVerdict').textContent = failed
+    ? (G.deathBy === 'spam' ? 'Mashed out' : 'Tower fallen')
+    : (G.practice ? 'Cleared — practice' : 'Cleared');
   $('#resVerdict').classList.toggle('failed', failed);
   $('#resLevel').textContent = `${G.spec.abbr} · ${G.spec.name}`;
   $('#resDiff').textContent = `${G.diff.name} · ${G.spec.bpm} BPM`;
@@ -834,6 +1227,7 @@ function finish(failed) {
   $('#resGreat').textContent = c.great;
   $('#resGood').textContent = c.good;
   $('#resMiss').textContent = c.miss;
+  $('#resGhost').textContent = G.ghosts;
   $('#resOffset').textContent = `${mean >= 0 ? '+' : ''}${mean.toFixed(1)} ms`;
 
   if (!failed && !G.practice) {
@@ -847,7 +1241,15 @@ function finish(failed) {
 /* ---------------------------------------------------------
    14. WIRING
    --------------------------------------------------------- */
+$('#diagBtn').addEventListener('click', renderDiagnostics);
+$('#diagClose').addEventListener('click', () => { $('#diagPanel').hidden = true; });
 $('#quitBtn').addEventListener('click', quitRun);
+$('#gateBack').addEventListener('click', closeGate);
+$('#gateGo').addEventListener('click', () => {
+  const run = pendingRun;
+  closeGate();
+  if (run) startLevel(run.spec, run.diff);
+});
 $('#backBtn').addEventListener('click', () => { showScreen('select'); renderDetail(); });
 $('#retryBtn').addEventListener('click', () => startLevel(G.spec, G.diff));
 $('#volume').addEventListener('input', e => Sound.setVolume(e.target.value / 100));
