@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b15';
+const BUILD = 'b16';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -561,8 +561,8 @@ const Sound = {
     if (!this.ctx || this.off) return; // feedback survives every degrade step
     const t = this.ctx.currentTime;
     if (kind === 'miss') { this.tone(t, 96, 0.16, 'sawtooth', 0.16, this.bus); return; }
-    const f = kind === 'perfect' ? 1320 : kind === 'great' ? 1050 : 780;
-    this.tone(t, f, 0.075, 'square', 0.11, this.bus);
+    // every clean hit sounds identical — perfect, great and good alike
+    this.tone(t, 1320, 0.075, 'square', 0.11, this.bus);
   },
 };
 
