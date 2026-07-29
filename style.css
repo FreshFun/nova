@@ -27,12 +27,22 @@
 
 * { box-sizing: border-box; }
 
+/* Fast repeated taps must never be read as a double-tap zoom. */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body {
   height: 100%;
   margin: 0;
 }
 
 body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
   background:
     radial-gradient(120% 80% at 50% -10%, #10121C 0%, transparent 60%),
     repeating-linear-gradient(0deg, rgba(255,255,255,.016) 0 1px, transparent 1px 4px),
@@ -179,7 +189,7 @@ button, input { font-family: inherit; color: inherit; }
 
 .rung {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px 1fr auto auto;
   align-items: center;
   gap: 14px;
   width: 100%;
@@ -436,11 +446,15 @@ button, input { font-family: inherit; color: inherit; }
   text-shadow: 0 0 60px rgba(0,0,0,.9);
 }
 
+/* Tap targets are positioned from the same geometry the lanes are drawn with,
+   so a tap always lands on the lane under your thumb. */
+.stage-wrap, #stage { touch-action: none; }
+
 .touchrow {
   position: absolute;
-  inset: auto 0 0 0;
+  top: 0; bottom: 0; left: 0;
   display: none;
-  height: 22%;
+  width: 100%;
 }
 .touchrow button {
   flex: 1;
@@ -448,7 +462,10 @@ button, input { font-family: inherit; color: inherit; }
   border: 0;
   border-left: 1px solid rgba(255,255,255,.05);
   cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
+.touchrow button:first-child { border-left: 0; }
 @media (pointer: coarse) {
   .touchrow { display: flex; }
 }
@@ -720,3 +737,35 @@ button, input { font-family: inherit; color: inherit; }
 }
 .diag-list b { color: #E4574A; }
 .diag-list span { display: block; margin-top: 4px; color: #6C7284; }
+
+.reset {
+  background: none;
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 7px 12px;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #565B6E;
+  cursor: pointer;
+}
+.reset:hover { color: var(--bone); border-color: var(--ash); }
+.reset.armed { color: #E4574A; border-color: #E4574A; }
+
+.pulse-best i {
+  display: block;
+  font-style: normal;
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: #626879;
+  filter: none;
+}
+
+.diag-status {
+  margin: -8px 0 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #7C8296;
+  overflow-wrap: anywhere;
+}

@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b11';
+const BUILD = 'b15';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -48,6 +48,11 @@ function showErrorBadge() {
 
 function renderDiagnostics() {
   document.querySelector('#diagBuild').textContent = BUILD;
+  const quality = ['full', 'reduced', 'minimal'][Sound.level] || '—';
+  document.querySelector('#diagStatus').textContent = Sound.ctx
+    ? `audio ${Sound.ctx.state}${Sound.off ? ' (stopped)' : ''} · ${quality} · ` +
+      `${Sound.failures} failure${Sound.failures === 1 ? '' : 's'} · ${Sound.liveVoices()} voices`
+    : 'audio not started yet';
   const list = document.querySelector('#diagList');
   list.innerHTML = '';
   if (!ERRORS.length) {
@@ -96,8 +101,6 @@ const DIFFICULTIES = [
     blurb:'Beyond reasonable. Built to be looked at more than it is ever cleared.' },
   { id:'unreal',       name:'Unreal',       color:'#7B007B', band:'Mind Breaking', rainbow:true,
     blurb:'The top of the canon chart. Good luck. Practice mode exists for a reason.' },
-  { id:'nil',          name:'nil',          color:'#635F62', band:'Joke',
-    blurb:'Not a real difficulty. Not a real chart. Press keys and see what happens.' },
 ];
 
 /* Every run on the chart. Edit freely — `name` and `abbr` drive the whole UI.
@@ -121,19 +124,19 @@ const PULSES = {
   ],
   difficult: [
     { name:'Pulse of Divided Focus',                         abbr:'PoDF' },
-    { name:'Pulse of the Broken Metronome',                  abbr:'PoBM' },
+    { name:'Pulse of Heavy Rage',                                     abbr:'PoHR' },
   ],
   challenging: [
     { name:'Pulse of Crimson Cadence',                       abbr:'PoCC' },
     { name:'Pulse of Unyielding Beat',                       abbr:'PoUB' },
   ],
   intense: [
-    { name:'Pulse of Iron Discipline',                       abbr:'PoID' },
+    { name:'Pulse of Impossible Expectations',                        abbr:'PoIE' },
     { name:'Pulse of Silent Machinery',                      abbr:'PoSM' },
   ],
   remorseless: [
     { name:'Pulse of Neon Malice',                           abbr:'PoNM' },
-    { name:'Pulse of Endless Repetition',                    abbr:'PoER' },
+    { name:'Pulse of True Skill',                                     abbr:'PoTS' },
   ],
   insane: [
     { name:'Citadel of Making The World Better',              abbr:'CoMTWB', kind:'citadel' },
@@ -152,16 +155,12 @@ const PULSES = {
     { name:'Pulse of Total Collapse',                        abbr:'PoTC' },
   ],
   horrific: [
-    { name:'Pulse of Violet Dread',                          abbr:'PoVD' },
+    { name:'Pulse of Flawed Logic',                                   abbr:'PoFL' },
     { name:'Pulse of Hollow Echoes',                         abbr:'PoHE' },
   ],
   unreal: [
-    { name:'Pulse of Impossible Geometry',                   abbr:'PoIG' },
-    { name:'Pulse of the Void Beyond',                       abbr:'PoVB' },
-  ],
-  nil: [
-    { name:'Pulse of nil',                                   abbr:'Ponil' },
-    { name:'Pulse of Nothing At All',                        abbr:'PoNAA' },
+    { name:'Citadel of Endless Misery',                               abbr:'CoEM', kind:'citadel' },
+    { name:'Pulse of All Pulses',                                     abbr:'PoAP' },
   ],
 };
 
@@ -181,7 +180,7 @@ const DIFF_WARNING = {
 };
 
 /* Per-tier tuning. index = position on the chart. */
-const BPMS = [92, 104, 116, 126, 138, 148, 158, 168, 178, 188, 198, 208, 218, 230, 262];
+const BPMS = [92, 104, 116, 126, 138, 148, 158, 168, 178, 188, 198, 208, 218, 230];
 
 function laneCount(t) {
   if (t <= 0) return 1;   // Effortless
@@ -351,7 +350,7 @@ function mixHex(hex, target, amt) {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * amt));
   return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
 }
-/* Very dark chart colors (Intense, nil, Unreal) need a legible playfield twin. */
+/* Very dark chart colors (Intense especially) need a legible playfield twin. */
 function playColor(hex) {
   const l = luminance(hex);
   if (l < 0.10) return mixHex(hex, '#FFFFFF', 0.62);
@@ -384,7 +383,7 @@ function rainbowHex(tSec) {
    --------------------------------------------------------- */
 const Sound = {
   ctx: null, bus: null, music: null, noise: null, volume: 0.7,
-  voices: 0, failures: 0, disabled: false,
+  voiceEnds: [], failures: 0, off: false, level: 0, lastFail: 0,
 
   init() {
     if (this.ctx) return;
@@ -415,10 +414,16 @@ const Sound = {
     setTimeout(go, 350);
   },
 
-  /* Each run gets its own bus so quitting cuts scheduled notes instantly. */
+  /* Each run gets a fresh bus and a clean slate: whatever went wrong last time
+     must never follow the player into the next attempt. */
   openRun() {
     this.closeRun();
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx) return;
+    this.failures = 0;
+    this.off = false;
+    this.level = 0;
+    this.lastFail = 0;
+    this.voiceEnds.length = 0;
     this.music = this.ctx.createGain();
     this.music.gain.value = 1;
     this.music.connect(this.bus);
@@ -440,26 +445,43 @@ const Sound = {
   now() { return this.ctx ? this.ctx.currentTime : 0; },
   safe(t) { return Math.max(t, this.ctx.currentTime + 0.004); },
 
-  /* Mobile Safari caps how many audio nodes may be alive at once and throws
-     once you pass it — which killed the whole frame loop on dense charts.
-     Voices are counted, released when they end, and optional sounds step
-     aside when the budget is tight. */
-  free(limit) { return this.voices < (limit || 26); },
-  track(src, nodes) {
-    this.voices++;
-    src.onended = () => {
-      this.voices = Math.max(0, this.voices - 1);
-      for (const n of nodes) { try { n.disconnect(); } catch (e) {} }
-    };
+  /* Live voices are counted by when they are scheduled to end, not by a running
+     tally — a tally that misses a decrement gets stuck high forever and
+     silently starves the music. This one cannot drift. */
+  liveVoices() {
+    const t = this.now();
+    let n = 0;
+    for (const e of this.voiceEnds) if (e > t) n++;
+    if (this.voiceEnds.length > 96) this.voiceEnds = this.voiceEnds.filter(e => e > t);
+    return n;
   },
-  /* Audio must never be able to take the game down with it. */
-  fail() {
-    this.voices = 0;
-    if (++this.failures > 12) { this.disabled = true; this.closeRun(); }
+  free(limit) { return this.liveVoices() < (limit || 26); },
+  track(src, nodes, endsAt) {
+    this.voiceEnds.push(endsAt);
+    src.onended = () => { for (const n of nodes) { try { n.disconnect(); } catch (e) {} } };
+  },
+
+  /* Trouble thins the arrangement rather than muting it. Cutting everything
+     for a couple of seconds is what made the music audibly drop out and come
+     back; the beat you play against must never go away.
+       level 0 full · 1 drops hats and arpeggios · 2 kick and bass only */
+  blocked() { return this.off; },
+  degrade() {
+    this.voiceEnds.length = 0;
+    this.failures++;
+    this.lastFail = this.now();
+    if (this.level < 2) this.level++;
+    if (this.failures > 80) this.off = true; // cleared again on the next run
+  },
+  ease() {
+    if (this.level > 0 && this.now() - this.lastFail > 5) {
+      this.level--;
+      this.lastFail = this.now();
+    }
   },
 
   tone(t, freq, dur, type, gain, dest) {
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx || this.blocked()) return;
     try {
       t = this.safe(t);
       const o = this.ctx.createOscillator();
@@ -470,12 +492,12 @@ const Sound = {
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g).connect(dest || this.out());
       o.start(t); o.stop(t + dur + 0.02);
-      this.track(o, [o, g]);
-    } catch (e) { this.fail(); }
+      this.track(o, [o, g], t + dur + 0.02);
+    } catch (e) { this.degrade(); }
   },
 
   burst(t, dur, freq, q, gain, dest) {
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx || this.blocked()) return;
     try {
       t = this.safe(t);
       const s = this.ctx.createBufferSource();
@@ -487,12 +509,12 @@ const Sound = {
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       s.connect(f).connect(g).connect(dest || this.out());
       s.start(t); s.stop(t + dur + 0.02);
-      this.track(s, [s, f, g]);
-    } catch (e) { this.fail(); }
+      this.track(s, [s, f, g], t + dur + 0.02);
+    } catch (e) { this.degrade(); }
   },
 
   kick(t) {
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx || this.blocked()) return;
     try {
       t = this.safe(t);
       const o = this.ctx.createOscillator();
@@ -503,8 +525,8 @@ const Sound = {
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
       o.connect(g).connect(this.out());
       o.start(t); o.stop(t + 0.25);
-      this.track(o, [o, g]);
-    } catch (e) { this.fail(); }
+      this.track(o, [o, g], t + 0.25);
+    } catch (e) { this.degrade(); }
   },
 
   snare(t) { this.burst(t, 0.16, 1900, 0.8, 0.35); this.tone(t, 190, 0.09, 'triangle', 0.16); },
@@ -514,7 +536,7 @@ const Sound = {
   /* UNUSED alternative hit sound — swap it back into hit() if you ever want it.
      Pickup chime in the spirit of Terraria's mana star. */
   star(rate, gain) {
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx || this.blocked()) return;
     const t = this.ctx.currentTime + 0.002;
     const f0 = 1245 * rate;
     for (const [m, a] of [[1, 1], [2.02, 0.55], [3.01, 0.30], [4.35, 0.16]]) {
@@ -530,13 +552,13 @@ const Sound = {
         g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
         o.connect(g).connect(this.bus);
         o.start(t); o.stop(t + dur + 0.02);
-        this.track(o, [o, g]);
-      } catch (e) { this.fail(); }
+        this.track(o, [o, g], t + dur + 0.02);
+      } catch (e) { this.degrade(); }
     }
   },
 
   hit(kind) {
-    if (this.disabled || !this.ctx) return;
+    if (!this.ctx || this.off) return; // feedback survives every degrade step
     const t = this.ctx.currentTime;
     if (kind === 'miss') { this.tone(t, 96, 0.16, 'sawtooth', 0.16, this.bus); return; }
     const f = kind === 'perfect' ? 1320 : kind === 'great' ? 1050 : 780;
@@ -562,7 +584,56 @@ const G = {
   endTime: 0, playHex: '#fff',
 };
 
-const BEST = {}; // session-only; no storage APIs
+/* Best result per run, kept across sessions. Tries the artifact storage API
+   first, then ordinary browser storage when opened as a local file, and falls
+   back to memory only if both are unavailable. */
+const BEST = {};
+const SAVE_KEY = 'fpoh-progress-v1';
+
+const Store = {
+  hasHost() { return typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function'; },
+  hasLocal() { try { return typeof localStorage !== 'undefined'; } catch (e) { return false; } },
+
+  async load() {
+    if (this.hasHost()) {
+      try {
+        const r = await window.storage.get(SAVE_KEY);
+        return r && r.value ? JSON.parse(r.value) : null;
+      } catch (e) { return null; }
+    }
+    if (this.hasLocal()) {
+      try {
+        const v = localStorage.getItem(SAVE_KEY);
+        return v ? JSON.parse(v) : null;
+      } catch (e) { return null; }
+    }
+    return null;
+  },
+
+  async save(obj) {
+    const text = JSON.stringify(obj);
+    if (this.hasHost()) { try { await window.storage.set(SAVE_KEY, text); } catch (e) {} return; }
+    if (this.hasLocal()) { try { localStorage.setItem(SAVE_KEY, text); } catch (e) {} }
+  },
+};
+
+function saveProgress() { Store.save(BEST).catch(() => {}); }
+
+async function loadProgress() {
+  const data = await Store.load();
+  if (data && typeof data === 'object') {
+    for (const k in data) if (data[k] && data[k].rank) BEST[k] = data[k];
+  }
+  renderDetail();
+  updateRailCounts();
+}
+
+function resetProgress() {
+  for (const k in BEST) delete BEST[k];
+  saveProgress();
+  renderDetail();
+  updateRailCounts();
+}
 
 const LANE_KEYS = {
   1: [['Space']],
@@ -638,10 +709,21 @@ function buildRail() {
     b.innerHTML =
       `<span class="rung-tier">${String(t + 1).padStart(2, '0')}</span>` +
       `<span class="rung-name">${d.name}</span>` +
+      `<span class="rung-count"></span>` +
       `<span class="rung-portal"></span>`;
     b.addEventListener('click', () => selectDiff(d));
     if (d.rainbow) rainbowRungs.push(b);
     rail.appendChild(b);
+  });
+}
+
+function updateRailCounts() {
+  document.querySelectorAll('.rung').forEach(el => {
+    const levels = LEVELS[el.dataset.id];
+    const cell = el.querySelector('.rung-count');
+    if (!levels || !cell) return;
+    const done = levels.filter(sp => BEST[sp.name]).length;
+    cell.textContent = done ? `${done}/${levels.length}` : '';
   });
 }
 
@@ -694,7 +776,8 @@ function renderDetail() {
           <span>window ×${spec.windowScale.toFixed(2)}</span>
         </span>
       </span>
-      <span class="pulse-best ${best ? '' : 'is-empty'}">${best || '—'}</span>`;
+      <span class="pulse-best ${best ? '' : 'is-empty'}">${best ? best.rank : '—'}${
+        best ? `<i>${best.acc.toFixed(2)}%</i>` : ''}</span>`;
     btn.addEventListener('click', () => requestLevel(spec, d));
     list.appendChild(btn);
   });
@@ -723,6 +806,16 @@ function closeGate() { $('#gate').hidden = true; pendingRun = null; }
    7. CANVAS SIZING
    --------------------------------------------------------- */
 let W = 0, H = 0;
+/* The playfield is centred and width-capped, so tap zones have to be placed
+   from the same numbers rather than spread across the whole screen. */
+function layoutTouchRow() {
+  const row = $('#touchRow');
+  if (!row || !G.spec || !W) return;
+  const { fieldW, x0 } = geometry();
+  row.style.left = x0 + 'px';
+  row.style.width = fieldW + 'px';
+}
+
 function resize() {
   const wrap = canvas.parentElement;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -730,6 +823,7 @@ function resize() {
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
   ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  layoutTouchRow();
 }
 window.addEventListener('resize', guard('resize', resize));
 
@@ -759,7 +853,7 @@ function startLevel(spec, diff) {
   G.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   G.offsets = []; G.health = 100;
   G.ghosts = 0; G.ghostStreak = 0; G.deathBy = '';
-  frameErrors = 0; Sound.failures = 0;
+  frameErrors = 0;
   G.laneDown = new Array(spec.lanes).fill(0);
   G.flashes = []; G.sparks = []; G.popup = null;
   G.ended = false; G.running = true; G.armed = false;
@@ -776,6 +870,7 @@ function startLevel(spec, diff) {
   buildTouchRow(spec.lanes);
   showScreen('game');
   resize();
+  layoutTouchRow();
   $('#countdown').textContent = 'READY';
 
   Sound.ready(guard('run start', () => {
@@ -828,7 +923,10 @@ function scheduleMusic() {
 }
 
 function scheduleMusicInner() {
-  if (!G.running || !Sound.music || Sound.disabled) return;
+  if (!G.running || !Sound.ctx || Sound.off) return;
+  if (!Sound.music) Sound.openRun(); // the bus went away; bring it back
+  if (!Sound.music) return;
+  Sound.ease();
   const horizon = Sound.now() + LOOKAHEAD;
   const totalSteps = G.spec.bars * 16 + 8;
   while (stepTime(G.nextStep) < horizon && G.nextStep < totalSteps) {
@@ -842,12 +940,12 @@ function scheduleMusicInner() {
       const prog = [0, 5, 3, 4][(bar + G.spec.variant) % 4];
       const rootMidi = 33 + MINOR[prog % 7] + (prog >= 7 ? 12 : 0);
 
-      if (inBar % 4 === 0) Sound.kick(t);
-      if (inBar === 4 || inBar === 12) Sound.snare(t);
-      if (inBar % 2 === 0 && Sound.free()) Sound.hat(t, inBar % 4 === 2);
+      if (inBar % 4 === 0) Sound.kick(t);                       // always
       if (inBar === 0) Sound.tone(t, midiFreq(rootMidi), G.beatDur * 1.6, 'sawtooth', 0.10);
-      if (inBar === 8) Sound.tone(t, midiFreq(rootMidi + 7), G.beatDur * 0.9, 'sawtooth', 0.07);
-      if (f > 0.28 && inBar % 4 === 2 && Sound.free(22)) {
+      if ((inBar === 4 || inBar === 12) && Sound.level < 2) Sound.snare(t);
+      if (inBar === 8 && Sound.level < 2) Sound.tone(t, midiFreq(rootMidi + 7), G.beatDur * 0.9, 'sawtooth', 0.07);
+      if (inBar % 2 === 0 && Sound.level === 0 && Sound.free(20)) Sound.hat(t, inBar % 4 === 2);
+      if (f > 0.28 && inBar % 4 === 2 && Sound.level === 0 && Sound.free(16)) {
         const arp = [0, 3, 7, 10][(inBar / 4 + bar) % 4];
         Sound.tone(t, midiFreq(rootMidi + 24 + arp), 0.12, 'square', 0.045 + f * 0.03);
       }
@@ -874,12 +972,19 @@ function songTime() { return performance.now() / 1000 - G.perf0; }
    dump every note that fell during the gap straight into misses and kill you,
    so a long stall rewinds the clocks and restarts the music cleanly instead. */
 function resyncAfterStall(gap) {
-  const shift = gap - 1 / 60;
-  G.perf0 += shift;
-  G.startTime += shift;
-  if (Sound.ctx && Sound.music) { Sound.closeRun(); Sound.openRun(); }
+  G.perf0 += gap - 1 / 60;
+  reanchorAudio();
   G.lastAudio = 0;
-  G.nextStep = Math.floor(songTime() / (G.beatDur / 4)) + 1;
+}
+
+/* Pin the music back onto wherever the song actually is. A suspended audio
+   clock stops while the run keeps going, and without this the scheduler sits
+   waiting for a time that already passed — which is music simply stopping. */
+function reanchorAudio() {
+  const at = songTime();
+  G.startTime = Sound.now() - at;
+  G.nextStep = Math.floor(at / (G.beatDur / 4)) + 1;
+  if (Sound.ctx && Sound.music) { Sound.closeRun(); Sound.openRun(); }
 }
 
 function pressLane(lane) {
@@ -989,13 +1094,9 @@ function buildTouchRow(lanes) {
    continues in silence instead of freezing on the countdown. */
 let frameErrors = 0;
 function audioPanic(err) {
-  if (!Sound.disabled) {
-    Sound.disabled = true;
-    try { Sound.closeRun(); } catch (e) {}
-    clearInterval(G.timer);
-    console.warn('Audio stopped; continuing without music.', err);
-  }
-  if (++frameErrors > 40) quitRun();
+  try { Sound.degrade(); } catch (e) {}
+  if (frameErrors === 0) console.warn('Audio hiccup; backing off and retrying.', err);
+  if (++frameErrors > 60) quitRun();
 }
 
 function frame() {
@@ -1021,8 +1122,9 @@ function stepFrame() {
   const audioAlive = Sound.ctx && Sound.ctx.state === 'running' &&
                      Sound.music && audioDelta > wallDelta * 0.5;
   if (audioAlive) {
-    const drift = (aNow - G.startTime) - (performance.now() / 1000 - G.perf0);
-    if (Math.abs(drift) > 0.003 && Math.abs(drift) < 0.25) G.perf0 -= drift * 0.03;
+    const drift = (aNow - G.startTime) - songTime();
+    if (Math.abs(drift) > 0.5) reanchorAudio();        // clock was asleep; catch up
+    else if (Math.abs(drift) > 0.003) G.perf0 -= drift * 0.03;
   }
 
   scheduleMusic(); // belt and braces: the interval alone can be throttled
@@ -1272,7 +1374,14 @@ function finish(failed) {
 
   if (!failed && !G.practice) {
     const prev = BEST[G.spec.name];
-    if (!prev || RANK_ORDER.indexOf(rank) > RANK_ORDER.indexOf(prev)) BEST[G.spec.name] = rank;
+    const better = !prev ||
+      RANK_ORDER.indexOf(rank) > RANK_ORDER.indexOf(prev.rank) ||
+      (rank === prev.rank && acc > prev.acc);
+    if (better) {
+      BEST[G.spec.name] = { rank, acc, score: G.score, combo: G.maxCombo };
+      saveProgress();
+      updateRailCounts();
+    }
   }
 
   showScreen('results');
@@ -1281,6 +1390,26 @@ function finish(failed) {
 /* ---------------------------------------------------------
    14. WIRING
    --------------------------------------------------------- */
+let resetArmed = false;
+$('#resetBtn').addEventListener('click', () => {
+  const btn = $('#resetBtn');
+  if (!resetArmed) {
+    resetArmed = true;
+    btn.textContent = 'Erase everything?';
+    btn.classList.add('armed');
+    setTimeout(() => {
+      resetArmed = false;
+      btn.textContent = 'Reset progress';
+      btn.classList.remove('armed');
+    }, 4000);
+    return;
+  }
+  resetArmed = false;
+  btn.textContent = 'Reset progress';
+  btn.classList.remove('armed');
+  resetProgress();
+});
+
 $('#diagBtn').addEventListener('click', renderDiagnostics);
 $('#diagClose').addEventListener('click', () => { $('#diagPanel').hidden = true; });
 $('#quitBtn').addEventListener('click', quitRun);
@@ -1296,5 +1425,6 @@ $('#volume').addEventListener('input', e => Sound.setVolume(e.target.value / 100
 
 buildRail();
 setInterval(guard('rainbow', tickRainbow), 60);
+loadProgress().catch(err => logError('load progress', err));
 applyTheme(activeDiff);
 renderDetail();

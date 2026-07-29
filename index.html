@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Fresh's Pulses of Hell</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,6 +17,7 @@
   <div class="diag-card">
     <p class="diag-eyebrow">Build <b id="diagBuild">—</b></p>
     <h3 class="diag-title">What went wrong</h3>
+    <p class="diag-status" id="diagStatus">—</p>
     <ol class="diag-list" id="diagList"></ol>
     <button class="btn" id="diagClose" type="button">Close</button>
   </div>
@@ -37,6 +38,7 @@
           <span class="toggle-box"></span>
           <span class="toggle-label">Practice mode<em>never fail out</em></span>
         </label>
+        <button class="reset" id="resetBtn" type="button">Reset progress</button>
         <label class="slider">
           <span class="toggle-label">Volume</span>
           <input type="range" id="volume" min="0" max="100" value="70" />
@@ -70,7 +72,6 @@
       <span class="legend-item"><i class="dot" style="background:#5B9A4C"></i>Standard</span>
       <span class="legend-item"><i class="dot" style="background:#0000FF"></i>Soul Crushing</span>
       <span class="legend-item"><i class="dot" style="background:#A75E9B"></i>Mind Breaking</span>
-      <span class="legend-item"><i class="dot" style="background:#635F62"></i>Joke</span>
       <span class="legend-note">Colors follow the EToH / JToH difficulty chart.</span>
     </footer>
   </section>
