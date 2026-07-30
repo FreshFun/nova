@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b16';
+const BUILD = 'b17';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -105,7 +105,9 @@ const DIFFICULTIES = [
 
 /* Every run on the chart. Edit freely — `name` and `abbr` drive the whole UI.
    kind:'citadel' makes a much longer run, the way citadels work in EToH.
-   tutorial:true marks the teaching run: gentler chart, on-screen tips, no fail. */
+   tutorial:true marks the teaching run: gentler chart, on-screen tips, no fail.
+   tune:{...} overrides any generated field (bpm, bars, approach, windowScale,
+   intensity) when a run needs to sit somewhere the formula would not put it. */
 const PULSES = {
   effortless: [
     { name:'Pulse of A Simple Time',                         abbr:'PoAST', tutorial:true },
@@ -113,6 +115,8 @@ const PULSES = {
   easy: [
     { name:'Pulse of a New Beginning',                       abbr:'PoFAB' },
     { name:'Pulse of Easy Timing',                           abbr:'PoET' },
+    { name:'Pulse of Times',                                 abbr:'PoT',
+      tune:{ bpm:124, bars:24, approach:1.28, windowScale:1.05, intensity:0.18 } },
   ],
   medium: [
     { name:'Pulse of Inconsiderate Actions',                 abbr:'PoIA' },
@@ -200,7 +204,8 @@ function levelSpec(tier, i) {
   if (citadel) bars = Math.round(bars * 2.6); // citadels run far longer
   if (tutorial) bars = 12;
 
-  return {
+  /* entry.tune wins over anything derived above. */
+  return Object.assign({
     name: entry.name,
     abbr: entry.abbr,
     kind: citadel ? 'citadel' : 'pulse',
@@ -209,7 +214,7 @@ function levelSpec(tier, i) {
     approach: tutorial ? 1.65 : Math.max(0.42, 1.5 - tier * 0.065 - i * 0.02),
     windowScale: tutorial ? 1.5 : Math.max(0.42, 1.25 - tier * 0.055 - i * 0.015),
     intensity: tutorial ? 0 : Math.min(1, f + i * 0.05),
-  };
+  }, entry.tune || {});
 }
 
 const LEVELS = {};
