@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b18';
+const BUILD = 'b20';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -89,7 +89,7 @@ const DIFFICULTIES = [
     blurb:'Machine tempo. Nothing is decorative anymore — every note is load-bearing.' },
   { id:'remorseless',  name:'Remorseless',  color:'#FF00BF', band:'Standard',
     blurb:'The last standard ring. Dense, bright, and completely uninterested in your wrists.' },
-  { id:'insane',       name:'Insane',       color:'#0000FF', band:'Soul Crushing',
+  { id:'insane',       name:'Insane',       color:'#0000FF', play:'#2E2EFF', band:'Soul Crushing',
     blurb:'Soul Crushing begins. Timing windows are now measured in single frames.' },
   { id:'extreme',      name:'Extreme',      color:'#2154B9', band:'Soul Crushing',
     blurb:'Continuous streams with jump anchors. There is no bar to breathe on.' },
@@ -109,7 +109,9 @@ const DIFFICULTIES = [
    tune:{...} overrides any generated field (bpm, bars, approach, windowScale,
    intensity) when a run needs to sit somewhere the formula would not put it.
    tune.weights reshapes the pattern mix itself — rest, quarters, eighths,
-   sixteenths, jumps, trill — for runs with a signature of their own. */
+   sixteenths, jumps, trill — for runs with a signature of their own.
+   tune.ramp makes intensity move across the run instead of holding flat, so a
+   chart can open quiet and then turn on the player partway through. */
 const PULSES = {
   effortless: [
     { name:'Pulse of A Simple Time',                         abbr:'PoAST', tutorial:true },
@@ -133,7 +135,7 @@ const PULSES = {
     { name:'Pulse of Heavy Rage',                                     abbr:'PoHR' },
   ],
   challenging: [
-    { name:'Pulse of Crimson Cadence',                       abbr:'PoCC' },
+    { name:'Pulse of Inforgivable Ideas',                    abbr:'PoII' },
     { name:'Pulse of Unyielding Beat',                       abbr:'PoUB' },
   ],
   intense: [
@@ -169,8 +171,11 @@ const PULSES = {
     { name:'Pulse of Hollow Echoes',                         abbr:'PoHE' },
   ],
   unreal: [
-    { name:'Citadel of Endless Misery',                               abbr:'CoEM', kind:'citadel' },
-    { name:'Pulse of All Pulses',                                     abbr:'PoAP' },
+    { name:'Citadel of Endless Misery',                               abbr:'CoEM', kind:'citadel',
+      tune:{ approach:0.70,
+             ramp:{ from:0.08, calm:0.15, drop:0.42, hit:0.88, to:1, curve:1.2 } } },
+    { name:'Pulse of Chromatic Colors',                               abbr:'PoCC',
+      tune:{ bpm:241 } },
     { name:'Pulse of Singularity',                                    abbr:'PoS',
       tune:{ bpm:260, bars:36, approach:0.46, windowScale:0.42, intensity:1,
              weights:{ rest:0.02, quarters:0.04, eighths:0.30,
@@ -286,18 +291,10 @@ function tutorialChart(spec) {
   return finalizeChart(notes, spec);
 }
 
-function generateChart(spec) {
-  if (spec.tutorial) return tutorialChart(spec);
-
-  const rng = mulberry32(hashStr(spec.name + spec.bpm));
-  const f = spec.intensity;
-  const lanes = spec.lanes;
-  const notes = [];
-  let lane = Math.floor(lanes / 2);
-
-  /* A run can hand-pick its pattern mix through tune.weights; anything it
-     leaves out keeps the value derived from intensity. */
-  const weights = Object.assign({
+/* A run can hand-pick its pattern mix through tune.weights; anything it
+   leaves out keeps the value derived from intensity. */
+function patternWeights(f, spec) {
+  return Object.assign({
     rest:       Math.max(0.04, 0.30 - f * 0.28),
     quarters:   Math.max(0.06, 0.46 - f * 0.40),
     eighths:    0.24 + f * 0.20,
@@ -305,6 +302,40 @@ function generateChart(spec) {
     jumps:      Math.max(0, f * 0.40 - 0.08),
     trill:      Math.max(0, f * 0.34 - 0.06),
   }, spec.weights || {});
+}
+
+/* Without a ramp, a run holds one intensity from the first bar to the last.
+   With one it opens quiet and then turns on you: intensity crawls from `from`
+   up to `calm` over the first `drop` of the bars, snaps to `hit` the moment
+   that stretch ends, and climbs to `to` from there. The jump from calm to hit
+   is the whole point — it should arrive as a shove, not a slope. */
+function rampAt(spec, bar) {
+  const r = spec.ramp;
+  if (!r) return spec.intensity;
+  const p = spec.bars > 1 ? Math.min(1, bar / (spec.bars - 1)) : 1;
+  const drop = r.drop != null ? r.drop : 0.5;
+  const calm = r.calm != null ? r.calm : r.from;
+  if (p < drop) return r.from + (calm - r.from) * (p / drop);
+  const hit = r.hit != null ? r.hit : calm;
+  const q = drop < 1 ? (p - drop) / (1 - drop) : 1;
+  return hit + (r.to - hit) * Math.pow(q, r.curve != null ? r.curve : 1);
+}
+
+/* The bar the shove lands on, so the chart can mark it rather than leaving the
+   change to chance. -1 when a run has no ramp. */
+function dropBar(spec) {
+  if (!spec.ramp || spec.bars < 2) return -1;
+  const drop = spec.ramp.drop != null ? spec.ramp.drop : 0.5;
+  return Math.ceil(drop * (spec.bars - 1));
+}
+
+function generateChart(spec) {
+  if (spec.tutorial) return tutorialChart(spec);
+
+  const rng = mulberry32(hashStr(spec.name + spec.bpm));
+  const lanes = spec.lanes;
+  const notes = [];
+  let lane = Math.floor(lanes / 2);
 
   const nextLane = (allowRepeat) => {
     if (lanes === 1) return 0;
@@ -315,11 +346,14 @@ function generateChart(spec) {
   };
 
   const push = (beat, l) => notes.push({ beat, lane: l, time: 0, judged: false });
+  const drop = dropBar(spec);
 
   for (let bar = 0; bar < spec.bars; bar++) {
     const b0 = bar * 4;
-    // Opening bar is always a gentle count-in phrase.
-    const kind = bar === 0 ? 'quarters' : pick(rng, weights);
+    const f = rampAt(spec, bar);
+    const weights = patternWeights(f, spec);
+    // Opening bar is always a gentle count-in phrase; the drop bar always bites.
+    const kind = bar === 0 ? 'quarters' : bar === drop ? 'sixteenths' : pick(rng, weights);
 
     if (kind === 'rest') {
       push(b0, nextLane(true));
@@ -367,8 +401,12 @@ function mixHex(hex, target, amt) {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * amt));
   return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
 }
-/* Very dark chart colors (Intense especially) need a legible playfield twin. */
-function playColor(hex) {
+/* Very dark chart colors (Intense especially) need a legible playfield twin.
+   A difficulty can skip this entirely with its own `play` color when the
+   automatic lift washes the hue out — Insane's pure blue goes periwinkle. */
+function playColor(diff) {
+  if (diff.play) return diff.play;
+  const hex = diff.color;
   const l = luminance(hex);
   if (l < 0.10) return mixHex(hex, '#FFFFFF', 0.62);
   if (l < 0.22) return mixHex(hex, '#FFFFFF', 0.34);
@@ -636,10 +674,20 @@ const Store = {
 
 function saveProgress() { Store.save(BEST).catch(() => {}); }
 
+/* Saves are keyed by run name, so a rename would otherwise orphan someone's
+   best rank. Old name on the left, current name on the right. */
+const RENAMED = {
+  'Pulse of All Pulses':     'Pulse of Chromatic Colors',
+  'Pulse of Crimson Cadence': 'Pulse of Inforgivable Ideas',
+};
+
 async function loadProgress() {
   const data = await Store.load();
   if (data && typeof data === 'object') {
-    for (const k in data) if (data[k] && data[k].rank) BEST[k] = data[k];
+    for (const k in data) {
+      const key = RENAMED[k] || k;
+      if (data[k] && data[k].rank) BEST[key] = data[k];
+    }
   }
   renderDetail();
   updateRailCounts();
@@ -862,7 +910,7 @@ function startLevel(spec, diff) {
 
   G.spec = spec;
   G.diff = diff;
-  G.playHex = diff.rainbow ? rainbowHex(performance.now() / 1000) : playColor(diff.color);
+  G.playHex = diff.rainbow ? rainbowHex(performance.now() / 1000) : playColor(diff);
   G.notes = generateChart(spec);
   G.beatDur = 60 / spec.bpm;
   G.practice = $('#practiceToggle').checked || spec.tutorial;
@@ -953,7 +1001,7 @@ function scheduleMusicInner() {
     } else {
       const inBar = ((s % 16) + 16) % 16;
       const bar = Math.floor(s / 16);
-      const f = G.spec.intensity;
+      const f = rampAt(G.spec, bar); // arpeggios arrive with the drop
       const prog = [0, 5, 3, 4][(bar + G.spec.variant) % 4];
       const rootMidi = 33 + MINOR[prog % 7] + (prog >= 7 ? 12 : 0);
 
