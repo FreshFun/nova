@@ -5,7 +5,7 @@
    ========================================================= */
 'use strict';
 
-const BUILD = 'b17';
+const BUILD = 'b18';
 
 /* ---------------------------------------------------------
    0. DIAGNOSTICS
@@ -107,7 +107,9 @@ const DIFFICULTIES = [
    kind:'citadel' makes a much longer run, the way citadels work in EToH.
    tutorial:true marks the teaching run: gentler chart, on-screen tips, no fail.
    tune:{...} overrides any generated field (bpm, bars, approach, windowScale,
-   intensity) when a run needs to sit somewhere the formula would not put it. */
+   intensity) when a run needs to sit somewhere the formula would not put it.
+   tune.weights reshapes the pattern mix itself — rest, quarters, eighths,
+   sixteenths, jumps, trill — for runs with a signature of their own. */
 const PULSES = {
   effortless: [
     { name:'Pulse of A Simple Time',                         abbr:'PoAST', tutorial:true },
@@ -149,6 +151,10 @@ const PULSES = {
   extreme: [
     { name:'Pulse of Astral Drift',                          abbr:'PoAD' },
     { name:'Pulse of Violent Currents',                      abbr:'PoVC' },
+    { name:'Pulse of Duality',                               abbr:'PoD',
+      tune:{ bpm:196, bars:30, approach:0.86, windowScale:0.70, intensity:0.80,
+             weights:{ rest:0.05, quarters:0.10, eighths:0.24,
+                       sixteenths:0.10, jumps:0.32, trill:0.29 } } },
   ],
   terrifying: [
     { name:'Pulse of Frozen Nerves',                         abbr:'PoFN' },
@@ -165,6 +171,10 @@ const PULSES = {
   unreal: [
     { name:'Citadel of Endless Misery',                               abbr:'CoEM', kind:'citadel' },
     { name:'Pulse of All Pulses',                                     abbr:'PoAP' },
+    { name:'Pulse of Singularity',                                    abbr:'PoS',
+      tune:{ bpm:260, bars:36, approach:0.46, windowScale:0.42, intensity:1,
+             weights:{ rest:0.02, quarters:0.04, eighths:0.30,
+                       sixteenths:0.52, jumps:0.34, trill:0.30 } } },
   ],
 };
 
@@ -285,14 +295,16 @@ function generateChart(spec) {
   const notes = [];
   let lane = Math.floor(lanes / 2);
 
-  const weights = {
+  /* A run can hand-pick its pattern mix through tune.weights; anything it
+     leaves out keeps the value derived from intensity. */
+  const weights = Object.assign({
     rest:       Math.max(0.04, 0.30 - f * 0.28),
     quarters:   Math.max(0.06, 0.46 - f * 0.40),
     eighths:    0.24 + f * 0.20,
     sixteenths: Math.max(0, f * 0.46 - 0.04),
     jumps:      Math.max(0, f * 0.40 - 0.08),
     trill:      Math.max(0, f * 0.34 - 0.06),
-  };
+  }, spec.weights || {});
 
   const nextLane = (allowRepeat) => {
     if (lanes === 1) return 0;
