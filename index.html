@@ -6,7 +6,7 @@
 <title>Chromatic Clicker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -87,6 +87,46 @@
 
   <footer><span id="saveStatus">Autosave on</span></footer>
 </div>
+
+
+  <button class="adminfab" id="adminFab">Admin panel</button>
+
+  <!-- password gate -->
+  <div class="pwrap" id="pwWrap" hidden>
+    <div class="pwbox" id="pwBox">
+      <h3>Admin panel</h3>
+      <p>Enter the password to unlock owner controls.</p>
+      <input id="pwInput" type="password" inputmode="text" autocomplete="off"
+             autocapitalize="characters" spellcheck="false" enterkeyhint="go" placeholder="Password">
+      <div class="pwerr" id="pwErr" hidden>That password isn’t right.</div>
+      <div class="pwrow">
+        <button class="tbtn" id="pwCancel">Cancel</button>
+        <button class="tbtn primary" id="pwGo">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- owner console: hidden until unlocked -->
+  <div class="devpanel" id="devPanel" hidden>
+    <div class="devhead">
+      <div><strong>Owner console</strong><span id="devBadge">unlocked</span></div>
+      <button class="tbtn" id="devClose">Close</button>
+    </div>
+    <div class="devgrid">
+      <button class="devbtn" data-dev="inf">Infinite chroma: <b id="devInfState">off</b></button>
+      <button class="devbtn" data-dev="m1">+1M chroma</button>
+      <button class="devbtn" data-dev="m2">+1B chroma</button>
+      <button class="devbtn" data-dev="m3">+1Qa chroma</button>
+      <button class="devbtn" data-dev="x1000">Multiply chroma ×1000</button>
+      <button class="devbtn" data-dev="swords">Unlock every sword</button>
+      <button class="devbtn" data-dev="runes">Bind every rune</button>
+      <button class="devbtn" data-dev="forge">+10 of every forge building</button>
+      <button class="devbtn" data-dev="frenzy">Start a 60s frenzy</button>
+      <button class="devbtn" data-dev="mote">Spawn a prism mote</button>
+      <button class="devbtn danger" data-dev="lock">Lock console &amp; turn off cheats</button>
+    </div>
+    <p class="devnote">Cheats run on your device only. Anything you change here still autosaves, and the stats panel keeps counting honestly.</p>
+  </div>
 
 <div class="toasts" id="toasts"></div>
 <script src="game.js" defer></script>
