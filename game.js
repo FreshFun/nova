@@ -157,7 +157,7 @@ const SFX = (()=>{
 
 /* ================= STATE ================= */
 const S = {
-  v:2, mute:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  v:2, mute:false, ts:0, chroma:0, total:0, clicks:0, crits:0, motes:0,
   sword:0, owned:[0], forge:new Array(FORGE.length).fill(0), runes:[],
   frenzyUntil:0
 };
@@ -406,40 +406,103 @@ setInterval(()=>{
 setInterval(paintShop, 900);
 
 /* ================= SAVE ================= */
+/* ================= SAVING =================
+   Writes to every storage backend available in this environment and, on load,
+   takes whichever copy is newest. That way progress survives a refresh whether
+   the game is running inside a host app or opened straight from a file. */
 const KEY='chromatic-clicker-save';
+
+const Store = (()=>{
+  const backends=[];
+  let probed=false;
+  async function detect(){
+    if(probed) return backends;
+    probed=true;
+    // 1. host-provided key/value storage
+    try{
+      if(window.storage && typeof window.storage.set==='function'){
+        await window.storage.set(KEY+':probe','1',false);
+        backends.push({ id:'cloud',
+          read : async()=>{ const r=await window.storage.get(KEY,false); return r&&r.value||null; },
+          write: async v=>{ await window.storage.set(KEY,v,false); },
+          wipe : async()=>{ await window.storage.delete(KEY,false); } });
+      }
+    }catch(e){}
+    // 2. the browser's own storage — this is what catches a plain page refresh
+    try{
+      const p=KEY+':probe';
+      window.localStorage.setItem(p,'1'); window.localStorage.removeItem(p);
+      backends.push({ id:'browser',
+        read : async()=>window.localStorage.getItem(KEY),
+        write: async v=>window.localStorage.setItem(KEY,v),
+        writeSync: v=>window.localStorage.setItem(KEY,v),
+        wipe : async()=>window.localStorage.removeItem(KEY) });
+    }catch(e){}
+    return backends;
+  }
+  return {
+    detect,
+    get list(){ return backends; },
+    async write(v){ let ok=false;
+      for(const b of backends){ try{ await b.write(v); ok=true; }catch(e){} }
+      return ok; },
+    writeSync(v){ for(const b of backends){ if(b.writeSync){ try{ b.writeSync(v); }catch(e){} } } },
+    async readNewest(){
+      let best=null;
+      for(const b of backends){
+        try{ const raw=await b.read(); if(!raw) continue;
+          const o=JSON.parse(raw);
+          if(!best || (o.ts||0)>(best.ts||0)) best=o;
+        }catch(e){}
+      }
+      return best; },
+    async wipe(){ for(const b of backends){ try{ await b.wipe(); }catch(e){} } }
+  };
+})();
+
 let saveState='idle', lastSaved=0, saving=false, dirty=false;
+function snapshot(){ S.ts=Date.now(); return JSON.stringify(S); }
+
 async function save(quiet){
-  if(saving) { dirty=true; return; }
+  if(saving){ dirty=true; return; }
   saving=true;
   try{
-    if(!window.storage){ saveState='off'; paintSaveStatus(); if(!quiet) toast('Saving is unavailable here'); return; }
-    await window.storage.set(KEY, JSON.stringify(S), false);
-    lastSaved=Date.now(); saveState='ok'; paintSaveStatus();
-    if(!quiet) toast('Progress saved');
-  }catch(e){
-    saveState='err'; paintSaveStatus();
-    if(!quiet) toast('Could not save progress');
-  }finally{
-    saving=false;
-    if(dirty){ dirty=false; setTimeout(()=>save(true),300); }
-  }
+    await Store.detect();
+    if(!Store.list.length){
+      saveState='off'; paintSaveStatus();
+      if(!quiet) toast('This browser is blocking storage — progress can’t be saved');
+      return;
+    }
+    const ok = await Store.write(snapshot());
+    saveState = ok?'ok':'err';
+    if(ok) lastSaved=Date.now();
+    paintSaveStatus();
+    if(!quiet) toast(ok?'Progress saved':'Could not save progress');
+  }catch(e){ saveState='err'; paintSaveStatus(); if(!quiet) toast('Could not save progress'); }
+  finally{ saving=false; if(dirty){ dirty=false; setTimeout(()=>save(true),300); } }
 }
+/* synchronous write — the async one may not finish while the tab is closing */
+function saveNow(){ try{ Store.writeSync(snapshot()); lastSaved=Date.now(); }catch(e){} save(true); }
 function markDirty(){ save(true); }
+
 function paintSaveStatus(){
   const el=$('saveStatus'); if(!el) return;
-  if(saveState==='off'){ el.textContent='Progress can’t be saved in this window'; return; }
+  if(saveState==='off'){ el.textContent='Storage blocked — progress can’t be saved here'; return; }
   if(saveState==='err'){ el.textContent='Last save failed — retrying'; return; }
   if(!lastSaved){ el.textContent='Autosave on'; return; }
   const a=Math.round((Date.now()-lastSaved)/1000);
-  el.textContent = a<3 ? 'Saved just now' : 'Saved '+a+'s ago';
+  el.textContent = (a<3?'Saved just now':'Saved '+a+'s ago');
 }
 setInterval(paintSaveStatus,1000);
+
 async function load(){
+  await Store.detect();
+  if(!Store.list.length){ saveState='off'; paintSaveStatus(); return; }
+  let o=null;
+  try{ o=await Store.readNewest(); }catch(e){}
+  saveState='ok'; lastSaved=Date.now();
+  if(!o){ paintSaveStatus(); return; }
   try{
-    if(!window.storage){ saveState='off'; paintSaveStatus(); return; }
-    const r=await window.storage.get(KEY,false);
-    if(!r||!r.value) return;
-    const o=JSON.parse(r.value);
     Object.assign(S,o);
     if(!o.v){ // old 15-sword roster: keep every other stat, rescale the sword collection
       const best=Math.min(Math.floor(Math.max(0,...(o.owned||[0]))*(SWORDS.length-1)/14), SWORDS.length-1);
@@ -448,26 +511,41 @@ async function load(){
     }
     S.v=2;
     S.forge = (o.forge||[]).concat(new Array(FORGE.length).fill(0)).slice(0,FORGE.length);
-    S.owned = (o.owned||[]).filter(i=>i>=0&&i<SWORDS.length);
+    S.owned = (S.owned||[]).filter(i=>i>=0&&i<SWORDS.length);
     if(!S.owned.length) S.owned=[0];
     if(!(S.sword>=0&&S.sword<SWORDS.length)||!S.owned.includes(S.sword)) S.sword=S.owned[S.owned.length-1];
     S.runes=(o.runes||[]).filter(i=>i>=0&&i<RUNES.length);
     S.frenzyUntil=0;
-    lastSaved=Date.now(); saveState='ok';
+
+    /* the forge keeps working while you're gone, at half rate, up to 8 hours */
+    recompute();
+    const away = Math.max(0,(Date.now()-(o.ts||Date.now()))/1000);
+    const earned = D.cps * Math.min(away, 8*3600) * .5;
+    if(away>60 && earned>0){
+      S.chroma+=earned; S.total+=earned;
+      const h=Math.floor(away/3600), m=Math.round(away%3600/60);
+      setTimeout(()=>toast(`The forge ran for ${h?h+'h ':''}${m}m — +${fmt(earned)} chroma`),1100);
+    }
+    paintSaveStatus();
     toast('Welcome back — progress restored');
   }catch(e){}
 }
+
 $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
-  Object.assign(S,{chroma:0,total:0,clicks:0,crits:0,motes:0,sword:0,owned:[0],
+  Object.assign(S,{v:2,mute:S.mute,ts:0,chroma:0,total:0,clicks:0,crits:0,motes:0,sword:0,owned:[0],
     forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0});
-  try{ if(window.storage) await window.storage.delete(KEY,false); }catch(e){}
-  lastSaved=0; recompute(); paintBlade(); paintHUD(); paintShop(); toast('Progress erased');
+  await Store.wipe();
+  lastSaved=0; saveState='ok';
+  recompute(); paintBlade(); paintHUD(); paintShop(); toast('Progress erased');
 });
+
 setInterval(()=>save(true),5000);
-window.addEventListener('pagehide',()=>save(true));
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) save(true); });
+window.addEventListener('pagehide',saveNow);
+window.addEventListener('beforeunload',saveNow);
+window.addEventListener('blur',()=>save(true));
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveNow(); else save(true); });
 
 /* ================= SOUND TOGGLE ================= */
 function paintMute(){ $('muteBtn').textContent = 'Sound: '+(S.mute?'off':'on'); }
