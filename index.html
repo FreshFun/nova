@@ -1,139 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>Fresh's Pulses of Hell</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Chromatic Clicker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="veil"></div><div class="grain"></div>
 
-<button class="diag-btn" id="diagBtn" type="button" hidden>&#9888; <b id="diagCount">0</b></button>
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <h1>Chromatic Clicker</h1>
+      <p>Strike the orb &middot; forge the spectrum</p>
+    </div>
+    <div class="topbtns">
+      <button class="tbtn" id="muteBtn">Sound: on</button>
+      <button class="tbtn" id="saveBtn">Save</button>
+      <button class="tbtn" id="wipeBtn">Reset</button>
+    </div>
+  </header>
 
-<div class="diag" id="diagPanel" hidden>
-  <div class="diag-card">
-    <p class="diag-eyebrow">Build <b id="diagBuild">—</b></p>
-    <h3 class="diag-title">What went wrong</h3>
-    <p class="diag-status" id="diagStatus">—</p>
-    <ol class="diag-list" id="diagList"></ol>
-    <button class="btn" id="diagClose" type="button">Close</button>
+  <div class="stage">
+    <!-- LEFT -->
+    <aside class="col-stats">
+      <div class="card">
+        <div class="eyebrow">Equipped</div>
+        <div class="equipped">
+          <div class="ico" id="eqIco"></div>
+          <div>
+            <div class="nm" id="eqName">Splinter</div>
+            <div class="tg" id="eqTier">Tier I</div>
+          </div>
+        </div>
+        <div class="eyebrow">Record</div>
+        <div class="stat"><span>Chroma earned</span><b id="sTotal">0</b></div>
+        <div class="stat"><span>Orb strikes</span><b id="sClicks">0</b></div>
+        <div class="stat"><span>Critical hits</span><b id="sCrits">0</b></div>
+        <div class="stat"><span>Crit chance</span><b id="sCC">0%</b></div>
+        <div class="stat"><span>Crit power</span><b id="sCD">2x</b></div>
+        <div class="stat"><span>Swords owned</span><b id="sSw">1 / 15</b></div>
+        <div class="stat"><span>Forge output</span><b id="sForge">0 /s</b></div>
+        <div class="stat"><span>Motes caught</span><b id="sMotes">0</b></div>
+      </div>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="col-orb">
+      <div class="card">
+        <div class="counter">
+          <div class="chroma" id="chromaNum">0</div>
+          <div class="chroma-unit">Chroma</div>
+          <div class="rates">
+            <div class="rate pk">per strike <b id="rPer">1</b></div>
+            <div class="rate">per second <b id="rSec">0</b></div>
+          </div>
+        </div>
+        <div class="arena">
+          <div class="orbwrap" id="orb" role="button" tabindex="0" aria-label="Strike the orb">
+            <div class="halo"></div>
+            <div class="ring r"></div><div class="ring g"></div><div class="ring b"></div>
+            <img class="orb" id="orbImg" alt="Chromatic orb">
+            <div class="fx" id="fx"></div>
+            <div class="blade" id="blade"><img id="bladeImg" alt=""></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="col-shop">
+      <div class="card">
+        <div class="tabs">
+          <button class="tab on" data-tab="armory">Armory</button>
+          <button class="tab" data-tab="forge">Forge</button>
+          <button class="tab" data-tab="runes">Runes</button>
+        </div>
+        <div class="list" id="shop"></div>
+      </div>
+    </aside>
   </div>
+
+  <footer><span id="saveStatus">Autosave on</span></footer>
 </div>
 
-<div id="app">
-
-  <!-- ============ SELECT SCREEN ============ -->
-  <section class="screen is-active" id="screen-select">
-    <header class="masthead">
-      <div class="mast-left">
-        <h1 class="wordmark">FRESH’S<span>PULSES OF HELL</span></h1>
-        <p class="tagline">Fifteen rings. Start at the bottom.</p>
-      </div>
-      <div class="mast-right">
-        <label class="toggle">
-          <input type="checkbox" id="practiceToggle" />
-          <span class="toggle-box"></span>
-          <span class="toggle-label">Practice mode<em>never fail out</em></span>
-        </label>
-        <button class="reset" id="resetBtn" type="button">Reset progress</button>
-        <label class="slider">
-          <span class="toggle-label">Volume</span>
-          <input type="range" id="volume" min="0" max="100" value="70" />
-        </label>
-      </div>
-    </header>
-
-    <div class="select-body">
-      <nav class="chart" aria-label="Difficulty chart">
-        <div class="chart-rail" id="chartRail"></div>
-      </nav>
-
-      <div class="detail" id="detail">
-        <!-- filled by script.js -->
-      </div>
-    </div>
-
-
-    <div class="gate" id="gate" hidden>
-      <div class="gate-card" role="alertdialog" aria-labelledby="gateTitle">
-        <p class="gate-eyebrow" id="gateDiff">—</p>
-        <h2 class="gate-title" id="gateTitle">BEYOND HUMAN LIMITS</h2>
-        <p class="gate-body" id="gateBody">—</p>
-        <div class="gate-actions">
-          <button class="btn btn-primary" id="gateGo" type="button">Enter anyway</button>
-          <button class="btn" id="gateBack" type="button">Step back</button>
-        </div>
-      </div>
-    </div>
-    <footer class="legend">
-      <span class="legend-item"><i class="dot" style="background:#5B9A4C"></i>Standard</span>
-      <span class="legend-item"><i class="dot" style="background:#0000FF"></i>Soul Crushing</span>
-      <span class="legend-item"><i class="dot" style="background:#A75E9B"></i>Mind Breaking</span>
-      <span class="legend-note">Colors follow the EToH / JToH difficulty chart.</span>
-    </footer>
-  </section>
-
-  <!-- ============ GAME SCREEN ============ -->
-  <section class="screen" id="screen-game">
-    <div class="hud">
-      <div class="hud-left">
-        <button class="quit" id="quitBtn" type="button">Leave pulse</button>
-        <div class="hud-title">
-          <strong id="hudLevel">—</strong>
-          <span id="hudDiff">—</span>
-        </div>
-      </div>
-      <div class="hud-right">
-        <div class="stat"><span>Score</span><b id="hudScore">0</b></div>
-        <div class="stat"><span>Accuracy</span><b id="hudAcc">100.00%</b></div>
-      </div>
-    </div>
-
-    <div class="bars">
-      <div class="bar bar-progress"><i id="progressFill"></i></div>
-      <div class="bar bar-health"><i id="healthFill"></i></div>
-    </div>
-
-    <div class="stage-wrap">
-      <canvas id="stage"></canvas>
-      <div class="countdown" id="countdown" aria-live="polite"></div>
-      <div class="touchrow" id="touchRow" aria-hidden="true"></div>
-    </div>
-  </section>
-
-  <!-- ============ RESULTS SCREEN ============ -->
-  <section class="screen" id="screen-results">
-    <div class="results-card" id="resultsCard">
-      <p class="results-verdict" id="resVerdict">Cleared</p>
-      <h2 class="results-level" id="resLevel">—</h2>
-      <p class="results-diff" id="resDiff">—</p>
-
-      <div class="rank" id="resRank">S</div>
-
-      <dl class="results-grid">
-        <div><dt>Accuracy</dt><dd id="resAcc">—</dd></div>
-        <div><dt>Max combo</dt><dd id="resCombo">—</dd></div>
-        <div><dt>Score</dt><dd id="resScore">—</dd></div>
-        <div><dt>Perfect</dt><dd id="resPerfect">—</dd></div>
-        <div><dt>Great</dt><dd id="resGreat">—</dd></div>
-        <div><dt>Good</dt><dd id="resGood">—</dd></div>
-        <div><dt>Missed</dt><dd id="resMiss">—</dd></div>
-        <div><dt>Ghost taps</dt><dd id="resGhost">—</dd></div>
-        <div><dt>Mean offset</dt><dd id="resOffset">—</dd></div>
-      </dl>
-
-      <div class="results-actions">
-        <button class="btn btn-primary" id="retryBtn" type="button">Run it again</button>
-        <button class="btn" id="backBtn" type="button">Back to the chart</button>
-      </div>
-    </div>
-  </section>
-
-</div>
-
-<script src="script.js"></script>
+<div class="toasts" id="toasts"></div>
+<script src="game.js" defer></script>
 </body>
 </html>
