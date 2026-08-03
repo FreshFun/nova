@@ -34,9 +34,9 @@ const SWORDS = [
   {n:'Diamond Sword',     img:IMG_DIAMOND,  px:true, fil:F.tide,  cost:450e6,  pow:220e3, col:'#2fe3ff', d:'The glint never stops moving.', crit:12, critdmg:3},
   {n:'Cobalt Sword',      img:IMG_PURPLE,   px:true, fil:F.noct,  cost:45e9,   pow:6e6,   col:'#b06bff', d:'Sharpest in the hour before dawn.', all:70, forge:100, crit:8, critdmg:4},
   {n:'Mythril Sword',     img:IMG_MYTHRIL,  px:true, fil:F.myth,  cost:3e12,   pow:1.2e8, col:'#a8c0e8', d:'Lighter than air, heavier than consequence.', crit:10, forge:150},
-  {n:"True Night's Edge", img:IMG_TNE,      px:true, fil:F.tne,   cost:250e12, pow:3e9,   col:'#7dff5c', d:'Every blade that came before it, fused into one.', all:120, critdmg:6, flip:true},
+  {n:"True Night's Edge", img:IMG_TNE,      px:true, fil:F.tne,   cost:250e12, pow:3e9,   col:'#7dff5c', d:'Every blade that came before it, fused into one.', all:120, critdmg:6},
   {n:'Murasama',          img:IMG_MURASAMA, px:true, fil:F.mura,  cost:20e15,  pow:9e10,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
-   all:250, forge:250, crit:20, critdmg:10, sfx:'electric', tall:true, big:true, flip:true, tilt:-30}
+   all:250, forge:250, crit:20, critdmg:10, sfx:'electric', tall:true, big:true, flip:true, tilt:-18}
 ];
 const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'];
 
