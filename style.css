@@ -140,7 +140,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
   100%{transform:rotate(0)}}
 .blade.tall{width:min(27vw,120px);right:2%;bottom:0}
 /* Murasama gets extra presence once it's in hand */
-.blade.tall.big{width:min(40vw,178px);right:-4%;bottom:-2%}
+.blade.tall.big{width:min(46vw,206px);right:-4%;bottom:-2%}
 /* blades that point at the orb pivot from the other corner and slash down across it */
 .blade.flip{transform-origin:88% 88%;right:-6%;
   animation:hoverFlip 5.4s ease-in-out infinite}
@@ -154,7 +154,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 /* mirrored blades pivot from the other corner and slash the other way */
 @media(max-width:520px){.blade{width:44vw;right:-6%}
   .blade.tall{width:26vw;right:0}
-  .blade.tall.big{width:38vw;right:-5%}}
+  .blade.tall.big{width:46vw;right:-5%}}
 
 /* ============ STATS ============ */
 .stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
