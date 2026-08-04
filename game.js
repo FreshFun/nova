@@ -152,7 +152,7 @@ const GODS = [
   {n:'Light', g:'✧', col:'#2fe3ff',
    d:'Motes fall like rain, and each one lands heavier. None of them ever catch fire.',
    up:k=>`Motes ${(1/(1-.5*k)).toFixed(1)}x as often · surges ×${(1+2*k).toFixed(2)} · banked ×${(1+k).toFixed(2)} · vault ×${(1+k).toFixed(2)}`,
-   dn:k=>k>=1?'Motes never start a frenzy':`Frenzy odds ${pct(.5*(1-k))} instead of 50%`,
+   dn:k=>k>=1?'Motes never ignite — no frenzy, no fury':`Frenzy and fury ${pct(1-k)} as likely`,
    f:(T,k)=>{ T.moteRate*=1-.5*k; T.moteGain*=1+2*k; T.vault*=1+k; T.frenzyOdds*=1-k; }}
 ];
 
@@ -374,7 +374,8 @@ const S = {
   v:4, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
   moteBank:0, bestCps:0,
   sword:0, owned:[0], forge:new Array(FORGE.length).fill(0), runes:[],
-  frenzyUntil:0, frenzyPow:2,
+  frenzyUntil:0, frenzyPow:2, furyUntil:0, furyPow:1,
+  dim:[],
   tree:[null,null,null], treeCd:0,
   mkt:freshMarket()
 };
@@ -416,6 +417,8 @@ function recompute(){
   D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult * T.clickMult;
   D.cps       = S.forge.reduce((a,c,i)=>a+c*FORGE[i].cps,0) * D.forgeMult * D.allMult;
   D.frenzy    = Date.now() < S.frenzyUntil ? (S.frenzyPow||2) : 1;
+  D.fury      = Date.now() < S.furyUntil   ? (S.furyPow||1)  : 1;
+  D.combo     = D.frenzy>1 && D.fury>1;
   /* the exchange indexes off your best-ever income so it never goes stale.
      One mote spent at par and sold back at par is worth PAR * unit chroma. */
   S.mkt.anchor = Math.max(S.mkt.anchor||0, D.cps, D.perClick*2);
@@ -487,15 +490,20 @@ function paintBlade(){
 }
 function paintHUD(){
   $('chromaNum').textContent = S.god ? '\u221E' : fmt(S.chroma);
-  $('rPer').textContent = fmt(D.perClick*D.frenzy);
-  $('rSec').textContent = fmt(D.cps);
+  $('rPer').textContent = fmt(D.perClick*D.frenzy*D.fury + (D.fury>1 ? D.cps*FURY_TAP*D.frenzy : 0));
+  $('rSec').textContent = fmt(D.cps*(1-drainFrac()));
   $('sTotal').textContent = fmt(S.total);
   $('sClicks').textContent = S.clicks.toLocaleString();
   $('sCrits').textContent = S.crits.toLocaleString();
   $('sCC').textContent = D.crit.toFixed(0)+'%';
   $('sCD').textContent = D.critDmg.toFixed(0)+'x';
   $('sSw').textContent = S.owned.length+' / '+SWORDS.length;
-  $('sForge').textContent = fmt(D.cps)+' /s';
+  $('sForge').textContent = fmt(D.cps*(1-drainFrac()))+' /s';
+  const drow=$('rowDim');
+  if(drow){
+    drow.hidden = !dimUnlocked();
+    if(!drow.hidden) $('sDim').textContent = S.dim.length+' · '+fmt(dimStored());
+  }
   $('sMotes').textContent = S.motes;
   const cr = clickRate();
   const clk = $('rClk');
@@ -820,7 +828,11 @@ function strike(x,y){
     if(r>(S.bestCps||0)) S.bestCps=r;
   }
   const isCrit = Math.random()*100 < D.crit;
-  let gain = D.perClick * D.frenzy * (isCrit ? D.critDmg : 1);
+  let gain = D.perClick * D.frenzy * D.fury;
+  /* a raging blade siphons the forge — this is what keeps fury worth chasing
+     once buildings have left raw click power far behind */
+  if(D.fury>1) gain += D.cps * FURY_TAP * D.frenzy;
+  gain *= (isCrit ? D.critDmg : 1);
   S.chroma+=gain; S.total+=gain; S.clicks++; if(isCrit) S.crits++;
 
   orbEl.classList.remove('hit'); void orbEl.offsetWidth; orbEl.classList.add('hit');
@@ -888,11 +900,16 @@ function moteTick(){
 }
 setInterval(moteTick, MOTE_TICK);
 
-function spawnMote(){
+function spawnMote(flavour){
   if(moteLive) return;
   moteLive=true;
+  const T=D.tree||{frenzyOdds:1};
+  /* Ember motes ignite the blade instead of the forge. Light snuffs them out
+     along with frenzies — that tree keeps the rain and gives up the fire. */
+  const ember = flavour ? flavour==='ember' : (Math.random() < .28*T.frenzyOdds);
   const b=document.createElement('button');
-  b.className='mote'; b.setAttribute('aria-label','Catch the prism mote');
+  b.className='mote'+(ember?' ember':'');
+  b.setAttribute('aria-label', ember?'Catch the ember mote':'Catch the prism mote');
   b.style.left = (8+Math.random()*76)+'vw';
   b.style.top  = (14+Math.random()*64)+'vh';
   b.style.setProperty('--life', MOTE_LIFE+'ms');
@@ -906,13 +923,23 @@ function spawnMote(){
     const T=D.tree||{moteGain:1,frenzyPow:0,frenzyDur:1,frenzyOdds:1};
     const banked=1+(T.moteGain-1)/2;   // trading capital grows at half the surge rate
     S.moteBank+=banked;
-    if(Math.random() < .5*T.frenzyOdds){
+    const wasFrenzied = Date.now() < S.frenzyUntil;
+    const wasFurious  = Date.now() < S.furyUntil;
+
+    if(ember){
+      /* Blade fury: short, violent, and it multiplies with an active frenzy */
+      S.furyPow=FURY_POW; S.furyUntil=Date.now()+FURY_MS; SFX.frenzy();
+      startBanner('fury', FURY_MS);
+      toast(`Blade fury — strikes ×${FURY_POW} and drink from the forge, ${FURY_MS/1000}s`);
+      if(wasFrenzied) announceCombo();
+    } else if(Math.random() < .5*T.frenzyOdds){
       const ms=Math.round(90000*T.frenzyDur), pow=+(2+T.frenzyPow).toFixed(1);
       S.frenzyPow=pow; S.frenzyUntil=Date.now()+ms; SFX.frenzy();
       toast(`Prism frenzy — strikes ×${pow} for ${Math.round(ms/1000)}s`);
       document.body.classList.add('frenzied');
       const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
       setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},ms);
+      if(wasFurious) announceCombo();
     } else {
       const bonus = Math.max((D.perClick*3 + D.cps)*300, 60) * T.moteGain;  // ~5 min of play-rate income
       S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
@@ -922,6 +949,107 @@ function spawnMote(){
   });
   document.body.appendChild(b);
 }
+
+/* the fury banner, and the moment both are running at once */
+const FURY_POW=12, FURY_MS=12000, FURY_TAP=.6;  // each strike also drinks 0.6s of forge output
+function startBanner(cls, ms){
+  document.body.classList.add('furious');
+  const bar=document.createElement('div'); bar.className='frenzy '+cls; document.body.appendChild(bar);
+  bar.style.setProperty('--life', ms+'ms');
+  setTimeout(()=>{ document.body.classList.remove('furious'); bar.remove(); paintHUD(); }, ms);
+}
+function announceCombo(){
+  recompute();
+  const mult=(D.frenzy*D.fury).toFixed(0);
+  document.body.classList.add('combo');
+  setTimeout(()=>document.body.classList.remove('combo'), 4000);
+  const c=document.createElement('div'); c.className='comboflash';
+  c.innerHTML=`<b>COMBO</b><span>strikes ×${mult}</span>`;
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(), 2600);
+  SFX.frenzy();
+}
+
+/* ================= DIMMERS =================
+   They fasten onto the orb and drink the forge dry — but they don't destroy what
+   they take, they hoard it. Strike one three times and it bursts, paying back far
+   more than it swallowed. The right play is to let them feed and cash them in,
+   which means deliberately watching your income fall for a while. */
+const DIM_MAX=6, DIM_DRAIN=.06, DIM_PAY=1.7, DIM_HITS=3;
+const DIM_UNLOCK=2e9, DIM_WAIT_MIN=45e3, DIM_WAIT_MAX=120e3;
+const dimUnlocked = () => S.total >= DIM_UNLOCK;
+const drainFrac  = () => Math.min(.6, S.dim.length*DIM_DRAIN);
+const dimStored  = () => S.dim.reduce((a,d)=>a+d.s,0);
+
+let dimSince=Date.now(), dimTarget=DIM_WAIT_MIN+Math.random()*(DIM_WAIT_MAX-DIM_WAIT_MIN);
+let dimEls=[];
+
+function attachDimmer(){
+  if(S.dim.length>=DIM_MAX) return;
+  const used=S.dim.map(d=>d.a);
+  const free=[0,1,2,3,4,5].filter(i=>!used.includes(i));
+  const a = free.length ? free[Math.floor(Math.random()*free.length)] : 0;
+  S.dim.push({s:0, h:0, a});
+  SFX.fizzle(); buildDimmers(); markDirty();
+  if(S.dim.length===1) toast('Something has fastened onto the orb');
+}
+function hitDimmer(i){
+  const d=S.dim[i]; if(!d) return;
+  d.h++;
+  const el=dimEls[i];
+  if(el){ el.classList.remove('struck'); void el.offsetWidth; el.classList.add('struck');
+          el.dataset.cracks=String(Math.min(d.h,DIM_HITS)); }
+  SFX.slash(false, S.sword, SWORDS[S.sword].sfx);
+  if(d.h>=DIM_HITS){
+    const pay=d.s*DIM_PAY;
+    S.chroma+=pay; S.total+=pay;
+    S.dim.splice(i,1);
+    SFX.mote();
+    toast(`Dimmer burst — +${fmt(pay)} chroma`);
+    if(el){ el.classList.add('burst'); const gone=el; dimEls.splice(i,1);
+            setTimeout(()=>gone.remove(),420); buildDimmers(true); }
+    recompute(); paintHUD(); markDirty();
+  }
+}
+function buildDimmers(skipRemove){
+  const wrap=orbEl;
+  if(!skipRemove) dimEls.forEach(e=>e.remove());
+  dimEls=[];
+  S.dim.forEach((d,i)=>{
+    const el=document.createElement('button');
+    el.className='dimmer';
+    el.type='button';
+    el.setAttribute('aria-label','Strike the dimmer');
+    el.style.setProperty('--ang', (d.a*60+18)+'deg');
+    el.dataset.cracks=String(Math.min(d.h,DIM_HITS));
+    el.style.setProperty('--dimg','url("'+IMG_DIM+'")');
+    el.innerHTML='<i class="dfill"></i>';
+    el.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); hitDimmer(i); });
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+    wrap.appendChild(el);
+    dimEls.push(el);
+  });
+  paintDimmers();
+}
+function paintDimmers(){
+  const ref = Math.max(D.cps*90, 1);
+  S.dim.forEach((d,i)=>{
+    const el=dimEls[i]; if(!el) return;
+    const f=Math.min(1, d.s/ref);
+    el.style.setProperty('--fill', f.toFixed(3));
+    el.style.setProperty('--gorge', (1+f*.35).toFixed(3));
+    el.title = `Holding ${fmt(d.s)} chroma — bursts for ${fmt(d.s*DIM_PAY)} after ${DIM_HITS-d.h} more hit${DIM_HITS-d.h===1?'':'s'}`;
+  });
+  orbEl.classList.toggle('dimmed', S.dim.length>0);
+}
+setInterval(()=>{
+  if(!dimUnlocked() || document.hidden) return;
+  if(S.dim.length>=DIM_MAX){ dimSince=Date.now(); return; }
+  if(Date.now()-dimSince < dimTarget) return;
+  dimSince=Date.now();
+  dimTarget=DIM_WAIT_MIN+Math.random()*(DIM_WAIT_MAX-DIM_WAIT_MIN);
+  attachDimmer();
+}, 1000);
 
 /* ================= TOASTS ================= */
 function toast(msg){
@@ -935,7 +1063,13 @@ let last=Date.now();
 setInterval(()=>{
   const now=Date.now(), dt=(now-last)/1000; last=now;
   recompute();
-  if(D.cps>0){ const g=D.cps*dt; S.chroma+=g; S.total+=g; }
+  if(D.cps>0){
+    const g=D.cps*dt;
+    const dr=S.dim.length ? g*drainFrac() : 0;
+    if(dr>0){ const each=dr/S.dim.length; S.dim.forEach(d=>d.s+=each); }
+    const keep=g-dr; S.chroma+=keep; S.total+=keep;   // drained chroma isn't earned until it bursts
+  }
+  if(S.dim.length) paintDimmers();
   if(S.god && S.chroma<1e30) S.chroma=1e30;
   paintHUD();
 },100);
@@ -1064,6 +1198,22 @@ async function load(){
     if(!(S.frenzyPow>=2)) S.frenzyPow=2;
     S.moteBank = (isFinite(+o.moteBank) && +o.moteBank>0) ? +o.moteBank : 0;
     S.bestCps  = (isFinite(+o.bestCps)  && +o.bestCps>0)  ? +o.bestCps  : 0;
+    S.furyUntil=0; S.furyPow=1;
+    const taken=new Set();
+    S.dim = (Array.isArray(o.dim)?o.dim:[])
+      .filter(d=>d && typeof d==='object')
+      .slice(0,DIM_MAX)
+      .map(d=>{
+        let a = (Number.isInteger(+d.a) && +d.a>=0 && +d.a<DIM_MAX) ? +d.a : -1;
+        if(a<0 || taken.has(a)){ a=0; while(a<DIM_MAX && taken.has(a)) a++; }
+        taken.add(a);
+        return {
+          s: (isFinite(+d.s) && +d.s>0) ? +d.s : 0,
+          h: (Number.isInteger(+d.h) && +d.h>0) ? Math.min(+d.h, DIM_HITS-1) : 0,
+          a
+        };
+      })
+      .filter(d=>d.a<DIM_MAX);
     /* the exchange used to trade in chroma — clear any positions bought that way */
     if((o.v||0) < 4){ S.mkt.hold=[0,0,0,0]; S.mkt.cost=[0,0,0,0]; S.mkt.realised=0; }
     S.forge = (o.forge||[]).concat(new Array(FORGE.length).fill(0)).slice(0,FORGE.length);
@@ -1078,7 +1228,11 @@ async function load(){
     const T = D.tree || {offRate:.5, offCap:8};
     const away = Math.max(0,(Date.now()-(o.ts||Date.now()))/1000);
     if(mktUnlocked()) mktStep(Math.min(Math.floor(away*1000/MKT_TICK), 240));   // the floor kept trading
-    const earned = D.cps * Math.min(away, T.offCap*3600) * T.offRate;
+    let earned = D.cps * Math.min(away, T.offCap*3600) * T.offRate;
+    if(S.dim.length){                       // they kept drinking in the dark
+      const dr=earned*drainFrac(), each=dr/S.dim.length;
+      S.dim.forEach(d=>d.s+=each); earned-=dr;
+    }
     if(away>60 && earned>0){
       S.chroma+=earned; S.total+=earned;
       const h=Math.floor(away/3600), m=Math.round(away%3600/60);
@@ -1093,7 +1247,7 @@ $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
   Object.assign(S,{v:4,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
-    forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,
+    forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,furyUntil:0,furyPow:1,dim:[],
     tree:[null,null,null],treeCd:0,mkt:freshMarket()});
   await Store.wipe();
   lastSaved=0; saveState='ok';
@@ -1155,6 +1309,11 @@ const Dev = (()=>{
             SFX.rune(); toast('Exchange and Prism Tree opened'); },
     shake(){ mktStep(14); toast('The market has been shaken'); },
     motes(){ S.moteBank+=50; SFX.mote(); toast('+50 motes banked'); },
+    ember(){ spawnMote('ember'); toast('Ember mote spawned'); },
+    dimmer(){ if(S.total<DIM_UNLOCK){const n=DIM_UNLOCK-S.total;S.chroma+=n;S.total+=n;}
+              attachDimmer(); },
+    gorge(){ const f=Math.max(D.cps*90,1); S.dim.forEach(d=>d.s+=f); paintDimmers();
+             toast('Dimmers gorged'); },
     lock(){ S.god=false; S.dev=false; panel.hidden=true; paintFab(); toast('Admin panel locked'); }
   };
   function grant(n){ S.chroma+=n; S.total+=n; SFX.buy(); toast('+'+fmt(n)+' chroma'); }
@@ -1201,5 +1360,5 @@ const Dev = (()=>{
 (async()=>{
   await load();
   SFX.on=!S.mute; paintMute(); Dev.paint();
-  recompute(); paintBlade(); paintHUD(); paintShop(); moteSince=Date.now();
+  recompute(); paintBlade(); paintHUD(); paintShop(); buildDimmers(); moteSince=Date.now();
 })();
