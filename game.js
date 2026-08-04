@@ -93,10 +93,12 @@ const RUNES = [
 
 
 /* ================= THE SPECTRUM EXCHANGE =================
-   Four pigments whose prices wander on a mean-reverting random walk. Shares are
-   priced in "units" — one unit is a fixed slice of your best-ever income, so the
-   market stays meaningful from your first anvil to your last. Buy low, sell high,
-   pay a small fee on the way out. Vault space is the real limit. */
+   Motes are the capital here, chroma is the payout. A share costs motes in
+   proportion to its price — cheap pigments cost fewer motes — and sells for
+   chroma at whatever the price has become. Flipping instantly is always a small
+   loss after the fee, so the only way to profit is to buy a pigment while it sits
+   below its usual level and sell it above. The exchange is what turns a slow
+   trickle of motes into real income. */
 const PIG = [
   {n:'Cinder',   sym:'CIN', col:'#ff6b4a', base:52, vol:.075, d:'Burnt orange, scraped from spent forges. Moves with the heat.'},
   {n:'Verdant',  sym:'VRD', col:'#7ee860', base:44, vol:.052, d:'The steady one. Small swings, few surprises.'},
@@ -106,6 +108,7 @@ const PIG = [
 const MKT_TICK  = 5000;   // ms between price moves
 const MKT_FEE   = .02;    // taken on every sale
 const MKT_UNLOCK= 5e8;    // total chroma earned before the floor opens
+const PAR       = 50;     // a share at this price costs exactly one mote
 
 /* ================= THE PRISM TREE =================
    Three slots, five powers. Every power is a real buff paired with a real cost,
@@ -147,10 +150,10 @@ const GODS = [
    f:(T,k)=>{ T.offRate=Math.max(T.offRate,.5+.5*k); T.offCap=Math.max(T.offCap,8+8*k); T.allMult*=1-.3*k; }},
 
   {n:'Light', g:'✧', col:'#2fe3ff',
-   d:'Motes fall like rain. Nothing you catch ever cuts deep again.',
-   up:k=>`Motes ${(1/(1-.5*k)).toFixed(1)}x as often, worth ×${(1+2*k).toFixed(2)} · vault ×${(1+k).toFixed(2)}`,
-   dn:k=>`Crit power ×${(1-.5*k).toFixed(2)}`,
-   f:(T,k)=>{ T.moteRate*=1-.5*k; T.moteGain*=1+2*k; T.vault*=1+k; T.critDmgMult*=1-.5*k; }}
+   d:'Motes fall like rain, and each one lands heavier. None of them ever catch fire.',
+   up:k=>`Motes ${(1/(1-.5*k)).toFixed(1)}x as often · surges ×${(1+2*k).toFixed(2)} · banked ×${(1+k).toFixed(2)} · vault ×${(1+k).toFixed(2)}`,
+   dn:k=>k>=1?'Motes never start a frenzy':`Frenzy odds ${pct(.5*(1-k))} instead of 50%`,
+   f:(T,k)=>{ T.moteRate*=1-.5*k; T.moteGain*=1+2*k; T.vault*=1+k; T.frenzyOdds*=1-k; }}
 ];
 
 /* ================= SOUND =================
@@ -368,7 +371,8 @@ function freshMarket(){
            hist:PIG.map(g=>[g.base]), anchor:0, realised:0 };
 }
 const S = {
-  v:3, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  v:4, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  moteBank:0, bestCps:0,
   sword:0, owned:[0], forge:new Array(FORGE.length).fill(0), runes:[],
   frenzyUntil:0, frenzyPow:2,
   tree:[null,null,null], treeCd:0,
@@ -380,7 +384,7 @@ let tab = 'armory';
 function treeEffects(){
   const T = {clickMult:1, forgeMult:1, allMult:1, critMult:1, critDmgMult:1, critDmgAdd:0,
              buildCost:1, moteRate:1, moteGain:1, vault:1, offRate:.5, offCap:8,
-             frenzyPow:0, frenzyDur:1, filled:0};
+             frenzyPow:0, frenzyDur:1, frenzyOdds:1, filled:0};
   (S.tree||[]).forEach((gi,slot)=>{
     if(gi==null || !GODS[gi] || !SLOTS[slot]) return;
     T.filled++; GODS[gi].f(T, SLOTS[slot].k);
@@ -412,15 +416,18 @@ function recompute(){
   D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult * T.clickMult;
   D.cps       = S.forge.reduce((a,c,i)=>a+c*FORGE[i].cps,0) * D.forgeMult * D.allMult;
   D.frenzy    = Date.now() < S.frenzyUntil ? (S.frenzyPow||2) : 1;
-  /* the exchange indexes off your best-ever income so it never goes stale */
+  /* the exchange indexes off your best-ever income so it never goes stale.
+     One mote spent at par and sold back at par is worth PAR * unit chroma. */
   S.mkt.anchor = Math.max(S.mkt.anchor||0, D.cps, D.perClick*2);
-  D.unit      = Math.max(S.mkt.anchor*.09, 25);
-  D.vault     = Math.floor((18 + S.owned.length*4) * T.vault);
+  D.unit      = Math.max(S.mkt.anchor, 250);
+  D.vault     = Math.floor((12 + S.owned.length) * T.vault);
 }
 
 /* ---- exchange helpers ---- */
-const shareCost = i => S.mkt.p[i] * D.unit;
-const vaultValue = () => S.mkt.hold.reduce((a,n,i)=>a + n*shareCost(i), 0);
+const motePrice = i => S.mkt.p[i] / PAR;                 // motes per share
+const sharePay  = i => S.mkt.p[i] * D.unit;              // chroma per share, before fee
+const parValue  = motes => motes * PAR * D.unit;         // what those motes were worth going in
+const vaultValue = () => S.mkt.hold.reduce((a,n,i)=>a + n*sharePay(i)*(1-MKT_FEE), 0);
 const treeUnlocked = () => S.total >= TREE_UNLOCK;
 const mktUnlocked  = () => S.total >= MKT_UNLOCK;
 function swapCost(){ return Math.max(25e3, D.cps*90); }
@@ -447,9 +454,10 @@ setInterval(()=>{
 const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Dd'];
 function fmt(n){
   if(!isFinite(n)) return '∞';
-  if(n<1000) return (n<10 && n%1!==0) ? n.toFixed(1) : Math.floor(n).toLocaleString();
+  const sign = n<0 ? '−' : ''; n = Math.abs(n);
+  if(n<1000) return sign + ((n<10 && n%1!==0) ? n.toFixed(1) : Math.floor(n).toLocaleString());
   let t=0; while(n>=1000 && t<SUF.length-1){n/=1000;t++;}
-  return (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
+  return sign + (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
 }
 function forgeCost(i){
   return Math.ceil(FORGE[i].cost * Math.pow(1.15, S.forge[i]) * (D.buildCost||1));
@@ -489,7 +497,21 @@ function paintHUD(){
   $('sSw').textContent = S.owned.length+' / '+SWORDS.length;
   $('sForge').textContent = fmt(D.cps)+' /s';
   $('sMotes').textContent = S.motes;
+  const cr = clickRate();
+  const clk = $('rClk');
+  if(clk){
+    clk.textContent = cr.toFixed(1);
+    const chip = clk.parentElement;
+    if(chip) chip.classList.toggle('hot', cr >= 8);
+  }
+  const bst = $('sBest');
+  if(bst) bst.textContent = (S.bestCps||0).toFixed(1)+' /s';
   const mrow=$('rowMkt'), trow=$('rowTree');
+  const brow=$('rowBank');
+  if(brow){
+    brow.hidden = !mktUnlocked();
+    if(!brow.hidden) $('sBank').textContent = S.moteBank.toFixed(2);
+  }
   if(mrow){
     mrow.hidden = !mktUnlocked();
     if(!mrow.hidden) $('sMkt').textContent = fmt(vaultValue());
@@ -599,24 +621,26 @@ function spark(i){
 }
 
 function buyShares(i,n){
-  const price=shareCost(i), room=D.vault-S.mkt.hold[i];
-  n=Math.min(n, room, Math.floor(S.chroma/price));
-  if(n<1){ toast(room<1?'Vault is full':'Not enough chroma'); return; }
-  S.chroma-=n*price; S.mkt.hold[i]+=n; S.mkt.cost[i]+=n*price;
-  SFX.buy(); recompute(); paintHUD(); paintShop(); markDirty();
+  const per=motePrice(i), room=D.vault-S.mkt.hold[i];
+  n=Math.min(n, room, Math.floor((S.moteBank+1e-9)/per));
+  if(n<1){ toast(room<1?'No vault space for '+PIG[i].sym:'Not enough motes'); return; }
+  const spend=n*per;
+  S.moteBank=Math.max(0,S.moteBank-spend);
+  S.mkt.hold[i]+=n; S.mkt.cost[i]+=spend;
+  SFX.buy(); toast(`${n} ${PIG[i].sym} at ${S.mkt.p[i].toFixed(1)} — ${spend.toFixed(2)} motes`);
+  recompute(); paintHUD(); paintShop(); markDirty();
 }
 function sellShares(i,n){
   n=Math.min(n, S.mkt.hold[i]);
-  if(n<1){ toast('You hold none'); return; }
-  const gross=n*shareCost(i), net=gross*(1-MKT_FEE);
-  const basis=S.mkt.cost[i]*(n/S.mkt.hold[i]);
-  S.mkt.hold[i]-=n; S.mkt.cost[i]-=basis;
+  if(n<1){ toast('You hold no '+PIG[i].sym); return; }
+  const net=n*sharePay(i)*(1-MKT_FEE);
+  const motesIn=S.mkt.cost[i]*(n/S.mkt.hold[i]);
+  const gain=net-parValue(motesIn);
+  S.mkt.hold[i]-=n; S.mkt.cost[i]-=motesIn;
   if(S.mkt.hold[i]<=0){ S.mkt.hold[i]=0; S.mkt.cost[i]=0; }
-  S.chroma+=net; S.total+=Math.max(0,net-basis);
-  S.mkt.realised+=net-basis;
+  S.chroma+=net; S.total+=net; S.mkt.realised+=gain;
   SFX.buy();
-  const d=net-basis;
-  toast(`Sold ${n} ${PIG[i].sym} — ${d>=0?'+':'−'}${fmt(Math.abs(d))} chroma`);
+  toast(`Sold ${n} ${PIG[i].sym} for ${fmt(net)} chroma — ${gain>=0?'+':'−'}${fmt(Math.abs(gain))} on entry`);
   recompute(); paintHUD(); paintShop(); markDirty();
 }
 
@@ -630,18 +654,19 @@ function paintMarket(box){
   const head=document.createElement('div');
   head.className='mhead';
   head.innerHTML=`
-    <div><span>Vault</span><b>${S.mkt.hold.reduce((a,b)=>a+b,0)} / ${D.vault*PIG.length}</b></div>
-    <div><span>Unit</span><b>${fmt(D.unit)}</b></div>
+    <div><span>Motes</span><b class="mb-big">${S.moteBank.toFixed(2)}</b></div>
+    <div><span>Par mote</span><b>${fmt(PAR*D.unit)}</b></div>
     <div><span>Fee</span><b>${Math.round(MKT_FEE*100)}%</b></div>
-    <div><span>Realised</span><b class="${S.mkt.realised>=0?'up':'dn'}">${S.mkt.realised>=0?'+':'−'}${fmt(Math.abs(S.mkt.realised))}</b></div>`;
+    <div><span>Profit</span><b class="${S.mkt.realised>=0?'up':'dn'}">${S.mkt.realised>=0?'+':'−'}${fmt(Math.abs(S.mkt.realised))}</b></div>`;
   box.appendChild(head);
 
   PIG.forEach((g,i)=>{
     const h=S.mkt.hist[i]||[], prev=h.length>1?h[h.length-2]:S.mkt.p[i];
     const chg=((S.mkt.p[i]-prev)/(prev||1))*100;
-    const price=shareCost(i), held=S.mkt.hold[i];
-    const value=held*price, basis=S.mkt.cost[i];
-    const pl=value-basis, plp=basis>0?(pl/basis*100):0;
+    const per=motePrice(i), held=S.mkt.hold[i];
+    const entry=held? S.mkt.cost[i]*PAR/held : 0;
+    const net=held*sharePay(i)*(1-MKT_FEE), pl=net-parValue(S.mkt.cost[i]);
+    const rel=(S.mkt.p[i]/g.base-1)*100;
     const el=document.createElement('div');
     el.className='mrow';
     el.innerHTML=`
@@ -652,32 +677,34 @@ function paintMarket(box){
           <em>${g.d}</em>
         </div>
         <div class="mprice">
-          <b>${fmt(price)}</b>
+          <b>${S.mkt.p[i].toFixed(1)}</b>
           <span class="${chg>=0?'up':'dn'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}%</span>
+          <span class="mrel">${rel>=0?'+':''}${rel.toFixed(0)}% vs usual</span>
         </div>
       </div>
       ${spark(i)}
       <div class="mheld">
-        ${held?`Holding <b>${held}</b> / ${D.vault} · worth ${fmt(value)} ·
-                <span class="${pl>=0?'up':'dn'}">${pl>=0?'+':'−'}${fmt(Math.abs(pl))} (${plp>=0?'+':''}${plp.toFixed(0)}%)</span>`
-              :`No position · room for ${D.vault}`}
+        <span>${per.toFixed(2)} motes per share · sells for ${fmt(sharePay(i)*(1-MKT_FEE))}</span>
+        ${held?`<span>Holding <b>${held}</b>/${D.vault} · entered at ${entry.toFixed(1)} ·
+                <span class="${pl>=0?'up':'dn'}">${pl>=0?'+':'−'}${fmt(Math.abs(pl))}</span></span>`
+              :`<span>No position · room for ${D.vault}</span>`}
       </div>
       <div class="mbtns">
         <button class="mb buy"  data-a="b1">Buy 1</button>
-        <button class="mb buy"  data-a="b10">Buy 10</button>
+        <button class="mb buy"  data-a="b5">Buy 5</button>
         <button class="mb buy"  data-a="bm">Buy max</button>
-        <button class="mb sell" data-a="s10">Sell 10</button>
+        <button class="mb sell" data-a="s5">Sell 5</button>
         <button class="mb sell" data-a="sa">Sell all</button>
       </div>`;
-    const acts={ b1:()=>buyShares(i,1), b10:()=>buyShares(i,10),
-                 bm:()=>buyShares(i,D.vault), s10:()=>sellShares(i,10), sa:()=>sellShares(i,S.mkt.hold[i]) };
+    const acts={ b1:()=>buyShares(i,1), b5:()=>buyShares(i,5), bm:()=>buyShares(i,D.vault),
+                 s5:()=>sellShares(i,5), sa:()=>sellShares(i,S.mkt.hold[i]) };
     el.querySelectorAll('.mb').forEach(b=>b.addEventListener('click',()=>acts[b.dataset.a]()));
     box.appendChild(el);
   });
 
   const note=document.createElement('div');
   note.className='mnote';
-  note.textContent='Prices move every 5 seconds and drift back toward their base over time. Vault space grows with every sword you forge.';
+  note.innerHTML=`Motes buy shares, chroma comes back out. A share costs its price in motes, so cheap pigments cost less to enter — buying and selling at the same price always loses the ${Math.round(MKT_FEE*100)}% fee. Prices drift back toward their usual level over time. Vault space grows with every sword you forge.`;
   box.appendChild(note);
 }
 
@@ -768,9 +795,30 @@ function paintTree(box){
 }
 
 /* ================= CLICKING ================= */
+/* Clicks per second, measured over a rolling two-second window so the reading
+   is steady rather than jittery. Only samples with real weight behind them are
+   allowed to set a new record. */
+const CPS_WINDOW = 2000;
+let clickTimes = [];
+function clickRate(){
+  const now = performance.now(), cut = now - CPS_WINDOW;
+  while(clickTimes.length && clickTimes[0] < cut) clickTimes.shift();
+  if(!clickTimes.length) return 0;
+  /* measured against the span the clicks actually cover, so a one-second burst
+     reads its real speed instead of being halved by the window */
+  const span = Math.max(.35, (now - clickTimes[0])/1000);
+  return clickTimes.length / span;
+}
 let hitT=null;
 function strike(x,y){
   recompute();
+  clickTimes.push(performance.now());
+  /* a record needs a real sample behind it — eight clicks spread over most of a
+     second — so a stray double-tap can't post an absurd number */
+  if(clickTimes.length>=8 && (performance.now()-clickTimes[0])>=800){
+    const r=clickRate();
+    if(r>(S.bestCps||0)) S.bestCps=r;
+  }
   const isCrit = Math.random()*100 < D.crit;
   let gain = D.perClick * D.frenzy * (isCrit ? D.critDmg : 1);
   S.chroma+=gain; S.total+=gain; S.clicks++; if(isCrit) S.crits++;
@@ -855,18 +903,21 @@ function spawnMote(){
   b.addEventListener('click',()=>{
     if(gone) return;
     clearTimeout(expire); S.motes++; SFX.mote();
-    const T=D.tree||{moteGain:1,frenzyPow:0,frenzyDur:1};
-    if(Math.random()<.5){
-      const bonus = Math.max((D.perClick*3 + D.cps)*300, 60) * T.moteGain;  // ~5 min of play-rate income
-      S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
-    } else {
+    const T=D.tree||{moteGain:1,frenzyPow:0,frenzyDur:1,frenzyOdds:1};
+    const banked=1+(T.moteGain-1)/2;   // trading capital grows at half the surge rate
+    S.moteBank+=banked;
+    if(Math.random() < .5*T.frenzyOdds){
       const ms=Math.round(90000*T.frenzyDur), pow=+(2+T.frenzyPow).toFixed(1);
       S.frenzyPow=pow; S.frenzyUntil=Date.now()+ms; SFX.frenzy();
       toast(`Prism frenzy — strikes ×${pow} for ${Math.round(ms/1000)}s`);
       document.body.classList.add('frenzied');
       const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
       setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},ms);
+    } else {
+      const bonus = Math.max((D.perClick*3 + D.cps)*300, 60) * T.moteGain;  // ~5 min of play-rate income
+      S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
     }
+    if(mktUnlocked()) setTimeout(()=>toast(`+${banked.toFixed(2)} motes banked — ${S.moteBank.toFixed(2)} to trade`),700);
     recompute(); paintHUD(); paintShop(); markDirty(); kill();
   });
   document.body.appendChild(b);
@@ -994,7 +1045,7 @@ async function load(){
       S.owned=[]; for(let i=0;i<=best;i++) S.owned.push(i);
       S.sword=best;
     }
-    S.v=3;
+    S.v=4;
     /* saves from before the tree and the exchange simply arrive without them */
     const t=Array.isArray(o.tree)?o.tree:[];
     S.tree=[0,1,2].map(i=>{ const g=t[i]; return (Number.isInteger(g)&&GODS[g])?g:null; });
@@ -1011,6 +1062,10 @@ async function load(){
       realised: isFinite(+m.realised) ? +m.realised : 0
     };
     if(!(S.frenzyPow>=2)) S.frenzyPow=2;
+    S.moteBank = (isFinite(+o.moteBank) && +o.moteBank>0) ? +o.moteBank : 0;
+    S.bestCps  = (isFinite(+o.bestCps)  && +o.bestCps>0)  ? +o.bestCps  : 0;
+    /* the exchange used to trade in chroma — clear any positions bought that way */
+    if((o.v||0) < 4){ S.mkt.hold=[0,0,0,0]; S.mkt.cost=[0,0,0,0]; S.mkt.realised=0; }
     S.forge = (o.forge||[]).concat(new Array(FORGE.length).fill(0)).slice(0,FORGE.length);
     S.owned = (S.owned||[]).filter(i=>i>=0&&i<SWORDS.length);
     if(!S.owned.length) S.owned=[0];
@@ -1037,7 +1092,7 @@ async function load(){
 $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
-  Object.assign(S,{v:3,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,sword:0,owned:[0],
+  Object.assign(S,{v:4,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
     forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,
     tree:[null,null,null],treeCd:0,mkt:freshMarket()});
   await Store.wipe();
@@ -1099,6 +1154,7 @@ const Dev = (()=>{
     open(){ if(S.total<TREE_UNLOCK*1.05){ const n=TREE_UNLOCK*1.05-S.total; S.chroma+=n; S.total+=n; }
             SFX.rune(); toast('Exchange and Prism Tree opened'); },
     shake(){ mktStep(14); toast('The market has been shaken'); },
+    motes(){ S.moteBank+=50; SFX.mote(); toast('+50 motes banked'); },
     lock(){ S.god=false; S.dev=false; panel.hidden=true; paintFab(); toast('Admin panel locked'); }
   };
   function grant(n){ S.chroma+=n; S.total+=n; SFX.buy(); toast('+'+fmt(n)+' chroma'); }

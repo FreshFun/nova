@@ -41,11 +41,13 @@
         <div class="stat"><span>Chroma earned</span><b id="sTotal">0</b></div>
         <div class="stat"><span>Orb strikes</span><b id="sClicks">0</b></div>
         <div class="stat"><span>Critical hits</span><b id="sCrits">0</b></div>
+        <div class="stat"><span>Fastest clicking</span><b id="sBest">0.0 /s</b></div>
         <div class="stat"><span>Crit chance</span><b id="sCC">0%</b></div>
         <div class="stat"><span>Crit power</span><b id="sCD">2x</b></div>
         <div class="stat"><span>Swords owned</span><b id="sSw">1 / 15</b></div>
         <div class="stat"><span>Forge output</span><b id="sForge">0 /s</b></div>
         <div class="stat"><span>Motes caught</span><b id="sMotes">0</b></div>
+        <div class="stat" id="rowBank" hidden><span>Motes banked</span><b id="sBank">0</b></div>
         <div class="stat" id="rowMkt" hidden><span>Vault value</span><b id="sMkt">0</b></div>
         <div class="stat" id="rowTree" hidden><span>Prism Tree</span><b id="sTree">0 / 3</b></div>
       </div>
@@ -60,6 +62,7 @@
           <div class="rates">
             <div class="rate pk">per strike <b id="rPer">1</b></div>
             <div class="rate">per second <b id="rSec">0</b></div>
+            <div class="rate cl">clicks /s <b id="rClk">0.0</b></div>
           </div>
         </div>
         <div class="arena">
@@ -129,6 +132,7 @@
       <button class="devbtn" data-dev="mote">Spawn a prism mote</button>
       <button class="devbtn" data-dev="open">Open the exchange &amp; the tree</button>
       <button class="devbtn" data-dev="shake">Shake up the market</button>
+      <button class="devbtn" data-dev="motes">+50 motes to trade</button>
       <button class="devbtn danger" data-dev="lock">Lock console &amp; turn off cheats</button>
     </div>
     <p class="devnote">Cheats run on your device only. Anything you change here still autosaves, and the stats panel keeps counting honestly.</p>
