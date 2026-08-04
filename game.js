@@ -328,7 +328,7 @@ function recompute(){
   D.moteRate  = s.moteRate;
   D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult;
   D.cps       = S.forge.reduce((a,c,i)=>a+c*FORGE[i].cps,0) * D.forgeMult * D.allMult;
-  D.frenzy    = Date.now() < S.frenzyUntil ? 7 : 1;
+  D.frenzy    = Date.now() < S.frenzyUntil ? 2 : 1;
 }
 
 /* ================= NUMBER FORMAT ================= */
@@ -530,7 +530,7 @@ function spawnMote(){
       const bonus = Math.max(D.perClick*220, D.cps*260, 60);
       S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
     } else {
-      S.frenzyUntil = Date.now()+15000; SFX.frenzy(); toast('Prism frenzy — strikes ×7 for 15s');
+      S.frenzyUntil = Date.now()+15000; SFX.frenzy(); toast('Prism frenzy — strikes ×2 for 15s');
       document.body.classList.add('frenzied');
       const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
       setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},15000);
@@ -739,7 +739,7 @@ const Dev = (()=>{
               paintBlade(); SFX.sword(); toast('Every sword unlocked'); },
     runes(){ S.runes=RUNES.map((_,i)=>i); SFX.rune(); toast('Every rune bound'); },
     forge(){ S.forge=S.forge.map(n=>n+10); SFX.buy(); toast('+10 of every forge building'); },
-    frenzy(){ S.frenzyUntil=Date.now()+60000; SFX.frenzy(); toast('Frenzy — strikes ×7 for 60s');
+    frenzy(){ S.frenzyUntil=Date.now()+60000; SFX.frenzy(); toast('Frenzy — strikes ×2 for 60s');
               document.body.classList.add('frenzied');
               const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
               setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();},60000); },
