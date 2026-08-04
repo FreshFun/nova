@@ -808,7 +808,12 @@ function schedulePaint(){ if(paintQueued)return; paintQueued=true;
   setTimeout(()=>{paintQueued=false;paintShop();},260); }
 
 window.addEventListener('pointerdown',()=>SFX.unlock(),{once:true});
-orbEl.addEventListener('pointerdown',e=>{e.preventDefault();strike(e.clientX,e.clientY)});
+/* every button strikes — left, right and middle — so you can alternate fingers.
+   The browser menus that normally ride along are cancelled on the orb only. */
+orbEl.addEventListener('pointerdown',e=>{ e.preventDefault(); strike(e.clientX,e.clientY); });
+orbEl.addEventListener('contextmenu',e=>e.preventDefault());
+orbEl.addEventListener('auxclick',e=>e.preventDefault());
+orbEl.addEventListener('dragstart',e=>e.preventDefault());
 orbEl.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();strike();} });
 
 /* ================= PRISM MOTES =================
