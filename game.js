@@ -56,11 +56,11 @@ const SWORDS = [
    all:45, crit:6, sfx:'hell'},
   {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:1.6e22,   pow:9e14,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
    forge:55, crit:8, critdmg:4, sfx:'electric', tall:true, big:true, flip:true, tilt:-18},
-  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:1e24,   pow:2.2e16, col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
+  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:2e24,   pow:2.2e16, col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
    all:60, critdmg:5, sfx:'holy'},
-  {n:"God's Exoblade",         img:IMG_EXO,      px:true, fil:F.exo,    cost:6e25,   pow:5.5e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
+  {n:"God's Exoblade",         img:IMG_EXO,      px:true, fil:F.exo,    cost:2e26,   pow:5.5e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
    all:75, forge:75, sfx:'cosmic'},
-  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:5e27,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
+  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:9e27,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
    all:120, forge:120, crit:10, critdmg:8, sfx:'behold', big:true}
 ];
 const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
@@ -78,10 +78,12 @@ const FORGE = [
   {n:'Spectrum Loom',    g:'▤',  cost:75e9,   cps:8.2e6, d:'Automatic income. Each one earns about 9x a singularity anvil.'},
   {n:'The First Colour', g:'✧',  cost:1.6e12, cps:78e6,  d:'Automatic income. Each one earns about 9x a spectrum loom.'},
   {n:'Chromasmith Choir',g:'♫',  cost:4e13,   cps:800e6, d:'Automatic income. Each one earns about 10x the first colour.'},
-  {n:'Nova Crucible',    g:'✺',  cost:2e15,   cps:9e9,   d:'Automatic income. Each one earns about 11x a chromasmith choir.'},
-  {n:'Continuum Press',  g:'⧉',  cost:1e17,   cps:110e9, d:'Automatic income. Each one earns about 12x a nova crucible.'},
-  {n:'The Unmade Anvil', g:'◉',  cost:6e18,   cps:1.4e12,d:'Automatic income. Each one earns about 13x a continuum press.'},
-  {n:'Godspring',        g:'✵',  cost:4e20,   cps:18e12, d:'Automatic income. The strongest earner in the forge.'}
+  {n:'Nova Crucible',    g:'✺',  cost:2e15,   cps:1.6e10,d:'Automatic income. Each one earns about 20x a chromasmith choir.'},
+  {n:'Continuum Press',  g:'⧉',  cost:1e17,   cps:350e9, d:'Automatic income. Each one earns about 22x a nova crucible.'},
+  {n:'The Unmade Anvil', g:'◉',  cost:6e18,   cps:8.5e12,d:'Automatic income. Each one earns about 24x a continuum press.'},
+  {n:'Godspring',        g:'✵',  cost:4e20,   cps:240e12,d:'Automatic income. Each one earns about 28x the unmade anvil.'},
+  {n:'Aleph Kiln',       g:'⟁',  cost:3e22,   cps:7.5e15,d:'Automatic income. Each one earns about 31x a godspring.'},
+  {n:'The Long Noon',    g:'☀',  cost:2.5e24, cps:2.6e17,d:'Automatic income. The strongest earner in the forge.'}
 ];
 
 /* ---- RUNES: one-time upgrades ---- */
@@ -97,7 +99,7 @@ const RUNES = [
   {n:'Starlight Quench',   cost:700e6,  tag:'Forge',      d:'Triples forge income.',                                                  f:s=>s.forgeMult*=3},
   {n:'Resonant Core',      cost:5e9,    tag:'Clicks',     d:'Quadruples the chroma you get from every click.',                        f:s=>s.clickMult*=4},
   {n:'Absolute Focus',     cost:40e9,   tag:'Crits',      d:'Adds 10% crit chance.',                                                  f:s=>s.crit+=10},
-  {n:'Mote Magnetism',     cost:300e9,  tag:'Motes',      d:'Prism motes appear twice as often, so you catch more bonuses.',          f:s=>s.moteRate=.5},
+  {n:'Mote Magnetism',     cost:300e9,  tag:'Motes',      d:'Halves the 5-15 minute wait between prism motes.',          f:s=>s.moteRate=.5},
   {n:'Spectrum Overdrive', cost:4e12,   tag:'Everything', d:'Multiplies all chroma by 2.5 — clicks and forge together.',              f:s=>s.allMult*=2.5},
   {n:'The Last Wavelength',cost:60e12,  tag:'Everything', d:'Multiplies all chroma by 3 and adds 3x to crit power.',                  f:s=>{s.allMult*=3;s.critDmg+=3}},
   {n:'Prism Cascade',      cost:900e12, tag:'Everything', d:'Multiplies all chroma by 2.',                                            f:s=>s.allMult*=2},
@@ -505,35 +507,53 @@ window.addEventListener('pointerdown',()=>SFX.unlock(),{once:true});
 orbEl.addEventListener('pointerdown',e=>{e.preventDefault();strike(e.clientX,e.clientY)});
 orbEl.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();strike();} });
 
-/* ================= PRISM MOTES ================= */
-let moteTimer=null;
-function queueMote(){
-  clearTimeout(moteTimer);
-  const wait = (55e3 + Math.random()*70e3) * (D.moteRate||1);
-  moteTimer=setTimeout(spawnMote, wait);
+/* ================= PRISM MOTES =================
+   Golden-cookie style timing: nothing can spawn for the first 5 minutes, then
+   the per-tick chance climbs with the 5th power of elapsed time, so spawns land
+   heavily in the back half of the 5-15 minute window. On screen for 13 seconds. */
+const MOTE_MIN=300e3, MOTE_MAX=900e3, MOTE_LIFE=13000, MOTE_TICK=250;
+let moteSince=Date.now(), moteLive=false;
+
+function moteWindow(){
+  const r = D.moteRate||1;                 // Mote Magnetism halves both ends
+  return [MOTE_MIN*r, MOTE_MAX*r];
 }
+function moteTick(){
+  if(moteLive || document.hidden) return;
+  const [lo,hi]=moteWindow();
+  const t=Date.now()-moteSince;
+  if(t<lo) return;
+  const curve = x => Math.pow(Math.min(1,Math.max(0,(x-lo)/(hi-lo))), 5);
+  const a=curve(t), b=curve(t+MOTE_TICK);
+  // convert the rising cumulative curve into this tick's spawn chance
+  const p = b>=1 ? 1 : (b-a)/(1-a);
+  if(Math.random()<p) spawnMote();
+}
+setInterval(moteTick, MOTE_TICK);
+
 function spawnMote(){
+  if(moteLive) return;
+  moteLive=true;
   const b=document.createElement('button');
   b.className='mote'; b.setAttribute('aria-label','Catch the prism mote');
   b.style.left = (8+Math.random()*76)+'vw';
   b.style.top  = (14+Math.random()*64)+'vh';
-  const LIFE=9000;
-  b.style.setProperty('--life', LIFE+'ms');
+  b.style.setProperty('--life', MOTE_LIFE+'ms');
   b.style.setProperty('--mote-img', 'url("'+IMG_MOTE+'")');
   let gone=false;
-  const kill=()=>{ if(gone) return; gone=true; b.remove(); queueMote(); };
-  const expire=setTimeout(()=>{ SFX.fizzle(); kill(); }, LIFE);
+  const kill=()=>{ if(gone) return; gone=true; b.remove(); moteLive=false; moteSince=Date.now(); };
+  const expire=setTimeout(()=>{ SFX.fizzle(); kill(); }, MOTE_LIFE);
   b.addEventListener('click',()=>{
     if(gone) return;
     clearTimeout(expire); S.motes++; SFX.mote();
     if(Math.random()<.5){
-      const bonus = Math.max(D.perClick*220, D.cps*260, 60);
+      const bonus = Math.max((D.perClick*3 + D.cps)*300, 60);   // ~5 min of play-rate income
       S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
     } else {
-      S.frenzyUntil = Date.now()+15000; SFX.frenzy(); toast('Prism frenzy — strikes ×2 for 15s');
+      S.frenzyUntil = Date.now()+90000; SFX.frenzy(); toast('Prism frenzy — strikes ×2 for 90s');
       document.body.classList.add('frenzied');
       const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
-      setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},15000);
+      setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},90000);
     }
     recompute(); paintHUD(); paintShop(); markDirty(); kill();
   });
@@ -790,5 +810,5 @@ const Dev = (()=>{
 (async()=>{
   await load();
   SFX.on=!S.mute; paintMute(); Dev.paint();
-  recompute(); paintBlade(); paintHUD(); paintShop(); queueMote();
+  recompute(); paintBlade(); paintHUD(); paintShop(); moteSince=Date.now();
 })();
