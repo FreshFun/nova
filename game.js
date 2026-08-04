@@ -48,20 +48,20 @@ const SWORDS = [
   {n:'Cobalt Sword',      img:IMG_PURPLE,   px:true, fil:F.noct,  cost:45e9,   pow:6e6,   col:'#b06bff', d:'Sharpest in the hour before dawn.', all:70, forge:100, crit:8, critdmg:4},
   {n:'Mythril Sword',     img:IMG_MYTHRIL,  px:true, fil:F.myth,  cost:3e12,   pow:1.2e8, col:'#a8c0e8', d:'Lighter than air, heavier than consequence.', crit:10, forge:150},
   {n:"True Night's Edge", img:IMG_TNE,      px:true, fil:F.tne,   cost:250e12, pow:3e9,   col:'#7dff5c', d:'Every blade that came before it, fused into one.', all:120, critdmg:6},
-  {n:'Terra Blade',            img:IMG_TERRA,    px:true, fil:F.terra,  cost:2e16,  pow:9e10,  col:'#7ee860', d:'Every blade you ever owned, remembered at once.',
-   all:200, crit:10, sfx:'terra'},
-  {n:'Volcano',                img:IMG_VOLCANO,  px:true, fil:F.volc,   cost:1.2e18, pow:2.5e12, col:'#ff8c28', d:'The blade is the eruption. The handle is an afterthought.',
-   forge:300, critdmg:6, sfx:'fire'},
-  {n:"Hell's Judgement",       img:IMG_HELL,     px:true, fil:F.hell,   cost:8e19,  pow:7e13,  col:'#d62030', d:'Sentence first. Trial never.',
-   all:300, crit:12, sfx:'hell'},
-  {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:5e21,  pow:2e15,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
-   forge:400, crit:20, critdmg:10, sfx:'electric', tall:true, big:true, flip:true, tilt:-18},
-  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:3e23,  pow:6e16,  col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
-   all:500, critdmg:12, sfx:'holy'},
-  {n:"God's Exoblade",         img:IMG_EXO,      px:true, fil:F.exo,    cost:2e25,  pow:2e18,  col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
-   all:700, forge:700, sfx:'cosmic'},
-  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:4e26,  pow:9e19,  col:'#ff78ff', d:'There is nothing after this one.',
-   all:2000, forge:2000, crit:25, critdmg:25, sfx:'behold', big:true}
+  {n:'Terra Blade',            img:IMG_TERRA,    px:true, fil:F.terra,  cost:4e16, pow:7e10,  col:'#7ee860', d:'Every blade you ever owned, remembered at once.',
+   all:40, crit:6, sfx:'terra'},
+  {n:'Volcano',                img:IMG_VOLCANO,  px:true, fil:F.volc,   cost:4e18,   pow:1.6e12, col:'#ff8c28', d:'The blade is the eruption. The handle is an afterthought.',
+   forge:45, critdmg:3, sfx:'fire'},
+  {n:"Hell's Judgement",       img:IMG_HELL,     px:true, fil:F.hell,   cost:3e20,   pow:3.8e13, col:'#d62030', d:'Sentence first. Trial never.',
+   all:45, crit:6, sfx:'hell'},
+  {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:1.6e22,   pow:9e14,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
+   forge:55, crit:8, critdmg:4, sfx:'electric', tall:true, big:true, flip:true, tilt:-18},
+  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:1e24,   pow:2.2e16, col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
+   all:60, critdmg:5, sfx:'holy'},
+  {n:"God's Exoblade",         img:IMG_EXO,      px:true, fil:F.exo,    cost:6e25,   pow:5.5e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
+   all:75, forge:75, sfx:'cosmic'},
+  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:5e27,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
+   all:120, forge:120, crit:10, critdmg:8, sfx:'behold', big:true}
 ];
 const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
 
@@ -99,11 +99,11 @@ const RUNES = [
   {n:'Absolute Focus',     cost:40e9,   tag:'Crits',      d:'Adds 10% crit chance.',                                                  f:s=>s.crit+=10},
   {n:'Mote Magnetism',     cost:300e9,  tag:'Motes',      d:'Prism motes appear twice as often, so you catch more bonuses.',          f:s=>s.moteRate=.5},
   {n:'Spectrum Overdrive', cost:4e12,   tag:'Everything', d:'Multiplies all chroma by 2.5 — clicks and forge together.',              f:s=>s.allMult*=2.5},
-  {n:'The Last Wavelength',cost:60e12,  tag:'Everything', d:'Multiplies all chroma by 4 and adds 5x to crit power.',                  f:s=>{s.allMult*=4;s.critDmg+=5}},
-  {n:'Prism Cascade',      cost:900e12, tag:'Everything', d:'Multiplies all chroma by 3.',                                            f:s=>s.allMult*=3},
-  {n:'Ninefold Edge',      cost:2e16,   tag:'Clicks',     d:'Multiplies click chroma by 6.',                                          f:s=>s.clickMult*=6},
-  {n:'Eternal Bellows',    cost:5e17,   tag:'Forge',      d:'Multiplies forge income by 5.',                                          f:s=>s.forgeMult*=5},
-  {n:'The Final Colour',   cost:4e19,   tag:'Everything', d:'Multiplies all chroma by 6 and adds 10x to crit power.',                 f:s=>{s.allMult*=6;s.critDmg+=10}}
+  {n:'The Last Wavelength',cost:60e12,  tag:'Everything', d:'Multiplies all chroma by 3 and adds 3x to crit power.',                  f:s=>{s.allMult*=3;s.critDmg+=3}},
+  {n:'Prism Cascade',      cost:900e12, tag:'Everything', d:'Multiplies all chroma by 2.',                                            f:s=>s.allMult*=2},
+  {n:'Ninefold Edge',      cost:9e16,   tag:'Clicks',     d:'Multiplies click chroma by 3.',                                          f:s=>s.clickMult*=3},
+  {n:'Eternal Bellows',    cost:8e18,   tag:'Forge',      d:'Multiplies forge income by 3.',                                          f:s=>s.forgeMult*=3},
+  {n:'The Final Colour',   cost:6e20,   tag:'Everything', d:'Multiplies all chroma by 2.5 and adds 4x to crit power.',                f:s=>{s.allMult*=2.5;s.critDmg+=4}}
 ];
 
 
@@ -323,7 +323,7 @@ function recompute(){
   });
   D.allMult   = s.allMult * (1+allBonus/100);
   D.forgeMult = s.forgeMult * (1+forgeBonus/100);
-  D.crit      = Math.min(s.crit, 90);
+  D.crit      = Math.min(s.crit, 60);
   D.critDmg   = s.critDmg;
   D.moteRate  = s.moteRate;
   D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult;
