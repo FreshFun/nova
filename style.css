@@ -288,3 +288,74 @@ footer{text-align:center;font-size:10px;letter-spacing:.22em;text-transform:uppe
 .tbtn.primary{color:#0d0718;background:var(--gold);border-color:var(--gold);font-weight:700}
 .tbtn.primary:hover{background:#ffdf95;color:#0d0718}
 @media(max-width:520px){.adminfab{left:10px;bottom:10px;padding:11px 16px}}
+
+/* ============ FIVE TABS ============ */
+.tabs{grid-template-columns:repeat(5,1fr);gap:5px}
+.tab{font-size:9px;letter-spacing:.1em;padding:11px 2px}
+@media(max-width:380px){.tab{font-size:8px;letter-spacing:.04em}}
+.stat[hidden]{display:none}
+
+/* ============ THE SPECTRUM EXCHANGE ============ */
+.mhead{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;
+  border:1px solid var(--ridge);border-radius:11px;background:rgba(0,0,0,.3)}
+.mhead div{text-align:center}
+.mhead span{display:block;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.mhead b{font-family:var(--mono);font-size:12px;color:var(--text);margin-top:4px;display:block}
+.mhead b.up{color:#7ee860}.mhead b.dn{color:#ff5a7a}
+
+.mrow{border:1px solid var(--ridge);border-radius:11px;background:rgba(0,0,0,.28);padding:11px}
+.mtop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mname b{display:block;font-family:var(--display);font-weight:700;font-size:14px;margin-top:2px}
+.mname em{display:block;font-style:normal;font-size:10px;color:var(--muted);margin-top:3px;line-height:1.35}
+.msym{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.18em}
+.mprice{text-align:right;white-space:nowrap}
+.mprice b{font-family:var(--mono);font-size:13px;color:var(--cyan)}
+.mprice span{display:block;font-family:var(--mono);font-size:10px;margin-top:3px}
+.up{color:#7ee860}.dn{color:#ff5a7a}
+.spark{display:block;width:100%;height:30px;margin:9px 0 7px;opacity:.85}
+.mheld{font-size:10.5px;color:var(--muted);line-height:1.5}
+.mheld b{font-family:var(--mono);color:var(--text)}
+.mbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:10px}
+.mb{font-family:var(--body);font-size:9.5px;letter-spacing:.02em;padding:9px 2px;border-radius:8px;
+  cursor:pointer;transition:.15s;border:1px solid var(--ridge);background:rgba(255,255,255,.03);color:var(--muted)}
+.mb.buy:hover{color:#0d0718;background:var(--cyan);border-color:var(--cyan)}
+.mb.sell:hover{color:#0d0718;background:var(--gold);border-color:var(--gold)}
+.mnote{font-size:10px;line-height:1.55;color:var(--dim);padding:4px 2px 2px}
+
+/* ============ THE PRISM TREE ============ */
+.slotgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.slot{border:1px dashed var(--ridge);border-radius:11px;background:rgba(0,0,0,.3);
+  padding:11px 7px;text-align:center}
+.slot.full{border-style:solid;border-color:var(--gc);background:color-mix(in srgb,var(--gc) 9%,transparent)}
+.slabel{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.sglyph{font-size:22px;margin:7px 0 4px;color:var(--gc,var(--dim))}
+.sname{font-family:var(--display);font-weight:700;font-size:12px}
+.srm{margin-top:8px;width:100%;font-family:var(--body);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;padding:6px 2px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--ridge);background:rgba(255,255,255,.04);color:var(--muted);transition:.15s}
+.srm:hover{color:#0d0718;background:#ff5a7a;border-color:#ff5a7a}
+
+.tbar{font-size:10.5px;color:var(--muted);text-align:center;padding:9px;border-radius:9px;
+  border:1px solid var(--ridge);background:rgba(0,0,0,.25);line-height:1.45}
+.tbar b{font-family:var(--mono);color:var(--cyan)}
+.tbar.cd{border-color:var(--gold);color:var(--gold)}
+
+.god{border:1px solid var(--ridge);border-radius:11px;background:rgba(0,0,0,.28);padding:11px}
+.god.on{border-color:var(--gc);background:color-mix(in srgb,var(--gc) 8%,transparent)}
+.gtop{display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:start}
+.gglyph{font-size:24px;text-align:center;color:var(--gc)}
+.gname{font-family:var(--display);font-weight:700;font-size:14px}
+.gat{font-family:var(--body);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:#0d0718;background:var(--gc);border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+.gdsc{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+.geff{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.gline{display:grid;grid-template-columns:46px 1fr;gap:6px;align-items:baseline;
+  font-size:9.5px;line-height:1.4}
+.gk{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.gup{color:#7ee860}
+.gdn{color:#ff8a9c;grid-column:2}
+.gbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:10px}
+.gb{font-family:var(--body);font-size:9.5px;letter-spacing:.06em;padding:9px 2px;border-radius:8px;
+  cursor:pointer;transition:.15s;border:1px solid var(--ridge);background:rgba(255,255,255,.03);color:var(--muted)}
+.gb:hover:not(:disabled){color:#0d0718;background:var(--gc);border-color:var(--gc)}
+.gb:disabled{opacity:.35;cursor:not-allowed}

@@ -41,7 +41,7 @@ const SWORDS = [
    all:60, critdmg:5, sfx:'holy'},
   {n:'Prismatic Blade',        img:IMG_CHROMA,   px:true, fil:F.chroma, cost:5e25, pow:1.1e17, col:'#c08cff', d:'The whole spectrum, folded into one curve.',
    all:65, crit:8, sfx:'chroma', tall:true, big:true, tilt:-16},
-  {n:"God's Exoblade",         img:IMG_EXO,      px:true, fil:F.exo,    cost:3e26,   pow:6e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
+  {n:'Exoblade',               img:IMG_EXO,      px:true, fil:F.exo,    cost:3e26,   pow:6e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
    all:75, forge:75, sfx:'cosmic'},
   {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:1.4e28,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
    all:120, forge:120, crit:10, critdmg:8, sfx:'behold', big:true}
@@ -91,6 +91,67 @@ const RUNES = [
   {n:'The Final Colour',   cost:6e20,   tag:'Everything', d:'Multiplies all chroma by 2.5 and adds 4x to crit power.',                f:s=>{s.allMult*=2.5;s.critDmg+=4}}
 ];
 
+
+/* ================= THE SPECTRUM EXCHANGE =================
+   Four pigments whose prices wander on a mean-reverting random walk. Shares are
+   priced in "units" — one unit is a fixed slice of your best-ever income, so the
+   market stays meaningful from your first anvil to your last. Buy low, sell high,
+   pay a small fee on the way out. Vault space is the real limit. */
+const PIG = [
+  {n:'Cinder',   sym:'CIN', col:'#ff6b4a', base:52, vol:.075, d:'Burnt orange, scraped from spent forges. Moves with the heat.'},
+  {n:'Verdant',  sym:'VRD', col:'#7ee860', base:44, vol:.052, d:'The steady one. Small swings, few surprises.'},
+  {n:'Azure',    sym:'AZR', col:'#2fe3ff', base:66, vol:.095, d:'Expensive and restless. Traders love it and lose to it.'},
+  {n:'Obsidian', sym:'OBS', col:'#b06bff', base:38, vol:.135, d:'Nobody agrees on what sets its price. It moves anyway.'}
+];
+const MKT_TICK  = 5000;   // ms between price moves
+const MKT_FEE   = .02;    // taken on every sale
+const MKT_UNLOCK= 5e8;    // total chroma earned before the floor opens
+
+/* ================= THE PRISM TREE =================
+   Three slots, five powers. Every power is a real buff paired with a real cost,
+   and both scale with how deep you slot it — the Crown gives everything and takes
+   everything, the Root barely does either. Swapping costs chroma and locks the
+   tree briefly, so a placement is a decision rather than a toggle. */
+const SLOTS = [
+  {n:'Crown', k:1,  d:'Full strength. The whole blessing and the whole cost.'},
+  {n:'Bough', k:.6, d:'Six tenths of the blessing, six tenths of the cost.'},
+  {n:'Root',  k:.3, d:'Three tenths of each. A cheap way to borrow a little.'}
+];
+const TREE_UNLOCK = 5e11;
+const TREE_CD     = 90e3;  // ms lock after any change
+
+const pct = v => Math.round(v*100)+'%';
+const GODS = [
+  {n:'Electric', g:'⚡', col:'#ffd166',
+   d:'Current runs through every building at once. Your sword arm goes numb.',
+   up:k=>`Forge output ×${(1+1.5*k).toFixed(2)}`,
+   dn:k=>`Click power ×${(1-.5*k).toFixed(2)}`,
+   f:(T,k)=>{ T.forgeMult*=1+1.5*k; T.clickMult*=1-.5*k; }},
+
+  {n:'Flame', g:'✷', col:'#ff8c28',
+   d:'Every strike lands like an eruption. Burns twice as bright, half as long.',
+   up:k=>`Click power ×${(1+2*k).toFixed(2)} · frenzy strikes ×${(2+3*k).toFixed(1)}`,
+   dn:k=>`Forge output ×${(1-.4*k).toFixed(2)} · frenzies last ${pct(1-.5*k)} as long`,
+   f:(T,k)=>{ T.clickMult*=1+2*k; T.frenzyPow+=3*k; T.forgeMult*=1-.4*k; T.frenzyDur*=1-.5*k; }},
+
+  {n:'Quake', g:'◉', col:'#7ee860',
+   d:'The ground gives up its metal cheaply. Nothing you swing lands clean.',
+   up:k=>`Forge buildings cost ${pct(.35*k)} less`,
+   dn:k=>k>=1?'Crits never land':`Crit chance ×${(1-k).toFixed(2)}`,
+   f:(T,k)=>{ T.buildCost*=1-.35*k; T.critMult*=1-k; }},
+
+  {n:'Void', g:'●', col:'#b06bff',
+   d:'It works hardest when nobody is watching. It resents being watched.',
+   up:k=>`Away earnings ${pct(.5+.5*k)} rate, up to ${Math.round(8+8*k)}h`,
+   dn:k=>`All chroma while you're here ×${(1-.3*k).toFixed(2)}`,
+   f:(T,k)=>{ T.offRate=Math.max(T.offRate,.5+.5*k); T.offCap=Math.max(T.offCap,8+8*k); T.allMult*=1-.3*k; }},
+
+  {n:'Light', g:'✧', col:'#2fe3ff',
+   d:'Motes fall like rain. Nothing you catch ever cuts deep again.',
+   up:k=>`Motes ${(1/(1-.5*k)).toFixed(1)}x as often, worth ×${(1+2*k).toFixed(2)} · vault ×${(1+k).toFixed(2)}`,
+   dn:k=>`Crit power ×${(1-.5*k).toFixed(2)}`,
+   f:(T,k)=>{ T.moteRate*=1-.5*k; T.moteGain*=1+2*k; T.vault*=1+k; T.critDmgMult*=1-.5*k; }}
+];
 
 /* ================= SOUND =================
    Everything is synthesised with the Web Audio API — no audio files to load. */
@@ -302,12 +363,30 @@ const SFX = (()=>{
 })();
 
 /* ================= STATE ================= */
+function freshMarket(){
+  return { p:PIG.map(g=>g.base), dr:[0,0,0,0], hold:[0,0,0,0], cost:[0,0,0,0],
+           hist:PIG.map(g=>[g.base]), anchor:0, realised:0 };
+}
 const S = {
-  v:2, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  v:3, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
   sword:0, owned:[0], forge:new Array(FORGE.length).fill(0), runes:[],
-  frenzyUntil:0
+  frenzyUntil:0, frenzyPow:2,
+  tree:[null,null,null], treeCd:0,
+  mkt:freshMarket()
 };
 let tab = 'armory';
+
+/* every slotted power, folded into one set of multipliers */
+function treeEffects(){
+  const T = {clickMult:1, forgeMult:1, allMult:1, critMult:1, critDmgMult:1, critDmgAdd:0,
+             buildCost:1, moteRate:1, moteGain:1, vault:1, offRate:.5, offCap:8,
+             frenzyPow:0, frenzyDur:1, filled:0};
+  (S.tree||[]).forEach((gi,slot)=>{
+    if(gi==null || !GODS[gi] || !SLOTS[slot]) return;
+    T.filled++; GODS[gi].f(T, SLOTS[slot].k);
+  });
+  return T;
+}
 
 /* derived */
 const D = {};
@@ -323,15 +402,46 @@ function recompute(){
     if(w.forge) forgeBonus+=w.forge;
     if(w.all) allBonus+=w.all;
   });
-  D.allMult   = s.allMult * (1+allBonus/100);
-  D.forgeMult = s.forgeMult * (1+forgeBonus/100);
-  D.crit      = Math.min(s.crit, 60);
-  D.critDmg   = s.critDmg;
-  D.moteRate  = s.moteRate;
-  D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult;
+  const T = D.tree = treeEffects();
+  D.allMult   = s.allMult * (1+allBonus/100) * T.allMult;
+  D.forgeMult = s.forgeMult * (1+forgeBonus/100) * T.forgeMult;
+  D.crit      = Math.min(s.crit * T.critMult, 60);
+  D.critDmg   = Math.max(1, (s.critDmg + T.critDmgAdd) * T.critDmgMult);
+  D.moteRate  = s.moteRate * T.moteRate;
+  D.buildCost = T.buildCost;
+  D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult * T.clickMult;
   D.cps       = S.forge.reduce((a,c,i)=>a+c*FORGE[i].cps,0) * D.forgeMult * D.allMult;
-  D.frenzy    = Date.now() < S.frenzyUntil ? 2 : 1;
+  D.frenzy    = Date.now() < S.frenzyUntil ? (S.frenzyPow||2) : 1;
+  /* the exchange indexes off your best-ever income so it never goes stale */
+  S.mkt.anchor = Math.max(S.mkt.anchor||0, D.cps, D.perClick*2);
+  D.unit      = Math.max(S.mkt.anchor*.09, 25);
+  D.vault     = Math.floor((18 + S.owned.length*4) * T.vault);
 }
+
+/* ---- exchange helpers ---- */
+const shareCost = i => S.mkt.p[i] * D.unit;
+const vaultValue = () => S.mkt.hold.reduce((a,n,i)=>a + n*shareCost(i), 0);
+const treeUnlocked = () => S.total >= TREE_UNLOCK;
+const mktUnlocked  = () => S.total >= MKT_UNLOCK;
+function swapCost(){ return Math.max(25e3, D.cps*90); }
+
+function mktStep(n){
+  const m=S.mkt, hot = D.frenzy>1 ? 1.8 : 1;
+  for(let s=0;s<n;s++){
+    PIG.forEach((g,i)=>{
+      m.dr[i] = m.dr[i]*.88 + (Math.random()-.5)*.9;          // momentum that decays
+      let p = m.p[i] * (1 + m.dr[i]*.012 + (Math.random()-.5)*g.vol*hot);
+      p += (g.base - p)*.022;                                  // pulled home slowly
+      m.p[i] = Math.min(240, Math.max(4, p));
+      const h=m.hist[i]; h.push(+m.p[i].toFixed(2)); if(h.length>26) h.shift();
+    });
+  }
+}
+setInterval(()=>{
+  if(!mktUnlocked()) return;
+  mktStep(1);
+  if(tab==='market') paintShop();
+}, MKT_TICK);
 
 /* ================= NUMBER FORMAT ================= */
 const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Dd'];
@@ -341,7 +451,9 @@ function fmt(n){
   let t=0; while(n>=1000 && t<SUF.length-1){n/=1000;t++;}
   return (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
 }
-function forgeCost(i){ return Math.ceil(FORGE[i].cost * Math.pow(1.15, S.forge[i])); }
+function forgeCost(i){
+  return Math.ceil(FORGE[i].cost * Math.pow(1.15, S.forge[i]) * (D.buildCost||1));
+}
 
 /* ================= DOM ================= */
 const $ = id => document.getElementById(id);
@@ -377,6 +489,15 @@ function paintHUD(){
   $('sSw').textContent = S.owned.length+' / '+SWORDS.length;
   $('sForge').textContent = fmt(D.cps)+' /s';
   $('sMotes').textContent = S.motes;
+  const mrow=$('rowMkt'), trow=$('rowTree');
+  if(mrow){
+    mrow.hidden = !mktUnlocked();
+    if(!mrow.hidden) $('sMkt').textContent = fmt(vaultValue());
+  }
+  if(trow){
+    trow.hidden = !treeUnlocked();
+    if(!trow.hidden) $('sTree').textContent = (D.tree?D.tree.filled:0)+' / 3';
+  }
 }
 
 function row({ico,name,desc,perk,price,sub,cls,onclick,disabled}){
@@ -460,7 +581,190 @@ function paintShop(){
     });
     if(!shown) box.innerHTML=`<div class="empty">No runes within reach yet.<br>${S.runes.length} bound so far — keep striking.</div>`;
   }
+  if(tab==='market') paintMarket(box);
+  if(tab==='tree')   paintTree(box);
   box.scrollTop=keepScroll;
+}
+
+/* ================= EXCHANGE PANEL ================= */
+function spark(i){
+  const h=S.mkt.hist[i];
+  if(!h || h.length<2) return '';
+  const lo=Math.min(...h), hi=Math.max(...h), rng=(hi-lo)||1;
+  const pts=h.map((v,k)=>`${(k/(h.length-1)*100).toFixed(1)},${(25-(v-lo)/rng*22).toFixed(1)}`).join(' ');
+  const up=h[h.length-1]>=h[0];
+  return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${pts}" fill="none" stroke="${up?'#7ee860':'#ff5a7a'}"
+      stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function buyShares(i,n){
+  const price=shareCost(i), room=D.vault-S.mkt.hold[i];
+  n=Math.min(n, room, Math.floor(S.chroma/price));
+  if(n<1){ toast(room<1?'Vault is full':'Not enough chroma'); return; }
+  S.chroma-=n*price; S.mkt.hold[i]+=n; S.mkt.cost[i]+=n*price;
+  SFX.buy(); recompute(); paintHUD(); paintShop(); markDirty();
+}
+function sellShares(i,n){
+  n=Math.min(n, S.mkt.hold[i]);
+  if(n<1){ toast('You hold none'); return; }
+  const gross=n*shareCost(i), net=gross*(1-MKT_FEE);
+  const basis=S.mkt.cost[i]*(n/S.mkt.hold[i]);
+  S.mkt.hold[i]-=n; S.mkt.cost[i]-=basis;
+  if(S.mkt.hold[i]<=0){ S.mkt.hold[i]=0; S.mkt.cost[i]=0; }
+  S.chroma+=net; S.total+=Math.max(0,net-basis);
+  S.mkt.realised+=net-basis;
+  SFX.buy();
+  const d=net-basis;
+  toast(`Sold ${n} ${PIG[i].sym} — ${d>=0?'+':'−'}${fmt(Math.abs(d))} chroma`);
+  recompute(); paintHUD(); paintShop(); markDirty();
+}
+
+function paintMarket(box){
+  if(!mktUnlocked()){
+    box.innerHTML=`<div class="empty">The exchange floor is closed to you.<br>
+      Earn ${fmt(MKT_UNLOCK)} chroma in total to be let in.<br>
+      <span style="color:var(--dim)">${fmt(S.total)} so far</span></div>`;
+    return;
+  }
+  const head=document.createElement('div');
+  head.className='mhead';
+  head.innerHTML=`
+    <div><span>Vault</span><b>${S.mkt.hold.reduce((a,b)=>a+b,0)} / ${D.vault*PIG.length}</b></div>
+    <div><span>Unit</span><b>${fmt(D.unit)}</b></div>
+    <div><span>Fee</span><b>${Math.round(MKT_FEE*100)}%</b></div>
+    <div><span>Realised</span><b class="${S.mkt.realised>=0?'up':'dn'}">${S.mkt.realised>=0?'+':'−'}${fmt(Math.abs(S.mkt.realised))}</b></div>`;
+  box.appendChild(head);
+
+  PIG.forEach((g,i)=>{
+    const h=S.mkt.hist[i]||[], prev=h.length>1?h[h.length-2]:S.mkt.p[i];
+    const chg=((S.mkt.p[i]-prev)/(prev||1))*100;
+    const price=shareCost(i), held=S.mkt.hold[i];
+    const value=held*price, basis=S.mkt.cost[i];
+    const pl=value-basis, plp=basis>0?(pl/basis*100):0;
+    const el=document.createElement('div');
+    el.className='mrow';
+    el.innerHTML=`
+      <div class="mtop">
+        <div class="mname">
+          <span class="msym" style="color:${g.col}">${g.sym}</span>
+          <b>${g.n}</b>
+          <em>${g.d}</em>
+        </div>
+        <div class="mprice">
+          <b>${fmt(price)}</b>
+          <span class="${chg>=0?'up':'dn'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}%</span>
+        </div>
+      </div>
+      ${spark(i)}
+      <div class="mheld">
+        ${held?`Holding <b>${held}</b> / ${D.vault} · worth ${fmt(value)} ·
+                <span class="${pl>=0?'up':'dn'}">${pl>=0?'+':'−'}${fmt(Math.abs(pl))} (${plp>=0?'+':''}${plp.toFixed(0)}%)</span>`
+              :`No position · room for ${D.vault}`}
+      </div>
+      <div class="mbtns">
+        <button class="mb buy"  data-a="b1">Buy 1</button>
+        <button class="mb buy"  data-a="b10">Buy 10</button>
+        <button class="mb buy"  data-a="bm">Buy max</button>
+        <button class="mb sell" data-a="s10">Sell 10</button>
+        <button class="mb sell" data-a="sa">Sell all</button>
+      </div>`;
+    const acts={ b1:()=>buyShares(i,1), b10:()=>buyShares(i,10),
+                 bm:()=>buyShares(i,D.vault), s10:()=>sellShares(i,10), sa:()=>sellShares(i,S.mkt.hold[i]) };
+    el.querySelectorAll('.mb').forEach(b=>b.addEventListener('click',()=>acts[b.dataset.a]()));
+    box.appendChild(el);
+  });
+
+  const note=document.createElement('div');
+  note.className='mnote';
+  note.textContent='Prices move every 5 seconds and drift back toward their base over time. Vault space grows with every sword you forge.';
+  box.appendChild(note);
+}
+
+/* ================= PRISM TREE PANEL ================= */
+function placeGod(gi,slot){
+  const cost=swapCost(), now=Date.now();
+  if(now < S.treeCd){ toast('The tree is still settling'); return; }
+  if(S.chroma < cost && !S.god){ toast(`Needs ${fmt(cost)} chroma to move the tree`); return; }
+  if(!S.god) S.chroma-=cost;
+  const cur=S.tree.indexOf(gi);
+  if(cur>=0) S.tree[cur]=null;              // moving, not cloning
+  S.tree[slot]=gi;
+  S.treeCd=now+TREE_CD;
+  SFX.rune();
+  toast(`${GODS[gi].n} takes the ${SLOTS[slot].n.toLowerCase()}`);
+  recompute(); paintHUD(); paintShop(); markDirty();
+}
+function clearSlot(slot){
+  const now=Date.now();
+  if(now < S.treeCd){ toast('The tree is still settling'); return; }
+  if(S.tree[slot]==null) return;
+  const n=GODS[S.tree[slot]].n;
+  S.tree[slot]=null; S.treeCd=now+TREE_CD;
+  SFX.fizzle(); toast(`${n} released`);
+  recompute(); paintHUD(); paintShop(); markDirty();
+}
+
+function paintTree(box){
+  if(!treeUnlocked()){
+    box.innerHTML=`<div class="empty">The Prism Tree has not grown for you yet.<br>
+      Earn ${fmt(TREE_UNLOCK)} chroma in total to reach it.<br>
+      <span style="color:var(--dim)">${fmt(S.total)} so far</span></div>`;
+    return;
+  }
+  const now=Date.now(), locked=now<S.treeCd, wait=Math.ceil((S.treeCd-now)/1000);
+  const cost=swapCost();
+
+  const slots=document.createElement('div');
+  slots.className='slotgrid';
+  SLOTS.forEach((sl,i)=>{
+    const gi=S.tree[i], g=gi!=null?GODS[gi]:null;
+    const d=document.createElement('div');
+    d.className='slot'+(g?' full':'');
+    if(g) d.style.setProperty('--gc', g.col);
+    d.innerHTML=`
+      <div class="slabel">${sl.n} · ${Math.round(sl.k*100)}%</div>
+      <div class="sglyph">${g?g.g:'—'}</div>
+      <div class="sname">${g?g.n:'Empty'}</div>
+      ${g?`<button class="srm">Release</button>`:''}`;
+    const rm=d.querySelector('.srm');
+    if(rm) rm.addEventListener('click',()=>clearSlot(i));
+    slots.appendChild(d);
+  });
+  box.appendChild(slots);
+
+  const bar=document.createElement('div');
+  bar.className='tbar'+(locked?' cd':'');
+  bar.innerHTML = locked
+    ? `Tree settling — ${wait}s until it can be moved again`
+    : `Moving the tree costs <b>${fmt(cost)}</b> chroma and locks it for ${TREE_CD/1000}s`;
+  box.appendChild(bar);
+
+  GODS.forEach((g,gi)=>{
+    const at=S.tree.indexOf(gi);
+    const el=document.createElement('div');
+    el.className='god'+(at>=0?' on':'');
+    el.style.setProperty('--gc', g.col);
+    el.innerHTML=`
+      <div class="gtop">
+        <div class="gglyph">${g.g}</div>
+        <div>
+          <div class="gname">${g.n}${at>=0?` <span class="gat">${SLOTS[at].n}</span>`:''}</div>
+          <div class="gdsc">${g.d}</div>
+        </div>
+      </div>
+      <div class="geff">
+        ${SLOTS.map(sl=>`<div class="gline"><span class="gk">${sl.n}</span>
+          <span class="gup">+ ${g.up(sl.k)}</span>
+          <span class="gdn">− ${g.dn(sl.k)}</span></div>`).join('')}
+      </div>
+      <div class="gbtns">
+        ${SLOTS.map((sl,i)=>`<button class="gb" data-s="${i}"
+          ${(locked||at===i)?'disabled':''}>${at===i?'Slotted':'To '+sl.n}</button>`).join('')}
+      </div>`;
+    el.querySelectorAll('.gb').forEach(b=>b.addEventListener('click',()=>placeGod(gi,+b.dataset.s)));
+    box.appendChild(el);
+  });
 }
 
 /* ================= CLICKING ================= */
@@ -546,14 +850,17 @@ function spawnMote(){
   b.addEventListener('click',()=>{
     if(gone) return;
     clearTimeout(expire); S.motes++; SFX.mote();
+    const T=D.tree||{moteGain:1,frenzyPow:0,frenzyDur:1};
     if(Math.random()<.5){
-      const bonus = Math.max((D.perClick*3 + D.cps)*300, 60);   // ~5 min of play-rate income
+      const bonus = Math.max((D.perClick*3 + D.cps)*300, 60) * T.moteGain;  // ~5 min of play-rate income
       S.chroma+=bonus; S.total+=bonus; toast(`Chroma surge — +${fmt(bonus)}`);
     } else {
-      S.frenzyUntil = Date.now()+90000; SFX.frenzy(); toast('Prism frenzy — strikes ×2 for 90s');
+      const ms=Math.round(90000*T.frenzyDur), pow=+(2+T.frenzyPow).toFixed(1);
+      S.frenzyPow=pow; S.frenzyUntil=Date.now()+ms; SFX.frenzy();
+      toast(`Prism frenzy — strikes ×${pow} for ${Math.round(ms/1000)}s`);
       document.body.classList.add('frenzied');
       const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
-      setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},90000);
+      setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();paintHUD();},ms);
     }
     recompute(); paintHUD(); paintShop(); markDirty(); kill();
   });
@@ -682,7 +989,23 @@ async function load(){
       S.owned=[]; for(let i=0;i<=best;i++) S.owned.push(i);
       S.sword=best;
     }
-    S.v=2;
+    S.v=3;
+    /* saves from before the tree and the exchange simply arrive without them */
+    const t=Array.isArray(o.tree)?o.tree:[];
+    S.tree=[0,1,2].map(i=>{ const g=t[i]; return (Number.isInteger(g)&&GODS[g])?g:null; });
+    S.tree.forEach((g,i)=>{ if(g!=null && S.tree.indexOf(g)!==i) S.tree[i]=null; }); // no duplicates
+    S.treeCd=0;
+    const m=o.mkt&&typeof o.mkt==='object'?o.mkt:{}, f=freshMarket();
+    S.mkt={
+      p    : PIG.map((g,i)=>{ const v=+(m.p||[])[i]; return isFinite(v)&&v>0?Math.min(240,Math.max(4,v)):g.base; }),
+      dr   : PIG.map((_,i)=>{ const v=+(m.dr||[])[i]; return isFinite(v)?v:0; }),
+      hold : PIG.map((_,i)=>{ const v=Math.floor(+(m.hold||[])[i]); return isFinite(v)&&v>0?v:0; }),
+      cost : PIG.map((_,i)=>{ const v=+(m.cost||[])[i]; return isFinite(v)&&v>0?v:0; }),
+      hist : PIG.map((g,i)=>{ const h=(m.hist||[])[i]; return Array.isArray(h)&&h.length?h.slice(-26):[g.base]; }),
+      anchor: isFinite(+m.anchor)&&+m.anchor>0 ? +m.anchor : 0,
+      realised: isFinite(+m.realised) ? +m.realised : 0
+    };
+    if(!(S.frenzyPow>=2)) S.frenzyPow=2;
     S.forge = (o.forge||[]).concat(new Array(FORGE.length).fill(0)).slice(0,FORGE.length);
     S.owned = (S.owned||[]).filter(i=>i>=0&&i<SWORDS.length);
     if(!S.owned.length) S.owned=[0];
@@ -690,10 +1013,12 @@ async function load(){
     S.runes=(o.runes||[]).filter(i=>i>=0&&i<RUNES.length);
     S.frenzyUntil=0;
 
-    /* the forge keeps working while you're gone, at half rate, up to 8 hours */
+    /* the forge keeps working while you're gone — Void decides how well */
     recompute();
+    const T = D.tree || {offRate:.5, offCap:8};
     const away = Math.max(0,(Date.now()-(o.ts||Date.now()))/1000);
-    const earned = D.cps * Math.min(away, 8*3600) * .5;
+    if(mktUnlocked()) mktStep(Math.min(Math.floor(away*1000/MKT_TICK), 240));   // the floor kept trading
+    const earned = D.cps * Math.min(away, T.offCap*3600) * T.offRate;
     if(away>60 && earned>0){
       S.chroma+=earned; S.total+=earned;
       const h=Math.floor(away/3600), m=Math.round(away%3600/60);
@@ -707,8 +1032,9 @@ async function load(){
 $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
-  Object.assign(S,{v:2,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,sword:0,owned:[0],
-    forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0});
+  Object.assign(S,{v:3,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,sword:0,owned:[0],
+    forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,
+    tree:[null,null,null],treeCd:0,mkt:freshMarket()});
   await Store.wipe();
   lastSaved=0; saveState='ok';
   Dev.paint(); $('devPanel').hidden=true;
@@ -759,11 +1085,15 @@ const Dev = (()=>{
               paintBlade(); SFX.sword(); toast('Every sword unlocked'); },
     runes(){ S.runes=RUNES.map((_,i)=>i); SFX.rune(); toast('Every rune bound'); },
     forge(){ S.forge=S.forge.map(n=>n+10); SFX.buy(); toast('+10 of every forge building'); },
-    frenzy(){ S.frenzyUntil=Date.now()+60000; SFX.frenzy(); toast('Frenzy — strikes ×2 for 60s');
+    frenzy(){ S.frenzyPow=+(2+((D.tree&&D.tree.frenzyPow)||0)).toFixed(1);
+              S.frenzyUntil=Date.now()+60000; SFX.frenzy(); toast(`Frenzy — strikes ×${S.frenzyPow} for 60s`);
               document.body.classList.add('frenzied');
               const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
               setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();},60000); },
     mote(){ spawnMote(); toast('Mote spawned'); },
+    open(){ if(S.total<TREE_UNLOCK*1.05){ const n=TREE_UNLOCK*1.05-S.total; S.chroma+=n; S.total+=n; }
+            SFX.rune(); toast('Exchange and Prism Tree opened'); },
+    shake(){ mktStep(14); toast('The market has been shaken'); },
     lock(){ S.god=false; S.dev=false; panel.hidden=true; paintFab(); toast('Admin panel locked'); }
   };
   function grant(n){ S.chroma+=n; S.total+=n; SFX.buy(); toast('+'+fmt(n)+' chroma'); }

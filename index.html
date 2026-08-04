@@ -46,6 +46,8 @@
         <div class="stat"><span>Swords owned</span><b id="sSw">1 / 15</b></div>
         <div class="stat"><span>Forge output</span><b id="sForge">0 /s</b></div>
         <div class="stat"><span>Motes caught</span><b id="sMotes">0</b></div>
+        <div class="stat" id="rowMkt" hidden><span>Vault value</span><b id="sMkt">0</b></div>
+        <div class="stat" id="rowTree" hidden><span>Prism Tree</span><b id="sTree">0 / 3</b></div>
       </div>
     </aside>
 
@@ -79,6 +81,8 @@
           <button class="tab on" data-tab="armory">Armory</button>
           <button class="tab" data-tab="forge">Forge</button>
           <button class="tab" data-tab="runes">Runes</button>
+          <button class="tab" data-tab="market">Market</button>
+          <button class="tab" data-tab="tree">Tree</button>
         </div>
         <div class="list" id="shop"></div>
       </div>
@@ -123,6 +127,8 @@
       <button class="devbtn" data-dev="forge">+10 of every forge building</button>
       <button class="devbtn" data-dev="frenzy">Start a 60s frenzy</button>
       <button class="devbtn" data-dev="mote">Spawn a prism mote</button>
+      <button class="devbtn" data-dev="open">Open the exchange &amp; the tree</button>
+      <button class="devbtn" data-dev="shake">Shake up the market</button>
       <button class="devbtn danger" data-dev="lock">Lock console &amp; turn off cheats</button>
     </div>
     <p class="devnote">Cheats run on your device only. Anything you change here still autosaves, and the stats panel keeps counting honestly.</p>
