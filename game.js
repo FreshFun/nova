@@ -33,6 +33,9 @@ const F = {
   excal: 'drop-shadow(0 0 18px rgba(150,200,255,.8))',
   exo  : 'drop-shadow(0 0 20px rgba(120,255,236,.85))',
   behold:'drop-shadow(0 0 26px rgba(255,120,255,.9))',
+  star : 'drop-shadow(0 0 16px rgba(255,79,216,.85))',
+  titan: 'drop-shadow(0 0 15px rgba(170,180,255,.8))',
+  tex  : 'drop-shadow(0 0 18px rgba(255,215,140,.85))',
   chroma:'drop-shadow(0 0 20px rgba(190,140,255,.85))'
 };
 
@@ -47,10 +50,16 @@ const SWORDS = [
   {n:'Cobalt Sword',      img:IMG_PURPLE,   px:true, fil:F.noct,  cost:45e9,   pow:6e6,   col:'#b06bff', d:'Sharpest in the hour before dawn.', all:70, forge:100, crit:8, critdmg:4},
   {n:'Mythril Sword',     img:IMG_MYTHRIL,  px:true, fil:F.myth,  cost:3e12,   pow:1.2e8, col:'#a8c0e8', d:'Lighter than air, heavier than consequence.', crit:10, forge:150},
   {n:"True Night's Edge", img:IMG_TNE,      px:true, fil:F.tne,   cost:250e12, pow:3e9,   col:'#7dff5c', d:'Every blade that came before it, fused into one.', all:120, critdmg:6},
+  {n:'Star Wrath',             img:IMG_STARWRATH, px:true, fil:F.star, cost:3e15, pow:1.45e10, col:'#ff4fd8', d:'Pulled down out of the sky, still falling.',
+   all:38, critdmg:3, sfx:'starwrath'},
   {n:'Terra Blade',            img:IMG_TERRA,    px:true, fil:F.terra,  cost:4e16, pow:7e10,  col:'#7ee860', d:'Every blade you ever owned, remembered at once.',
    all:40, crit:6, sfx:'terra'},
   {n:'Volcano',                img:IMG_VOLCANO,  px:true, fil:F.volc,   cost:4e18,   pow:1.6e12, col:'#ff8c28', d:'The blade is the eruption. The handle is an afterthought.',
    forge:45, critdmg:3, sfx:'fire'},
+  {n:'Titanium Sword',         img:IMG_TITANIUM, px:true, fil:F.titan,  cost:1.7e19,  pow:4.6e12, col:'#b9c2f5', d:'Does not bend, does not dull, does not care.',
+   forge:50, crit:5, sfx:'titanium'},
+  {n:'True Excalibur',         img:IMG_TRUEXCAL, px:true, fil:F.tex,    cost:7e19,    pow:1.3e13, col:'#ffd98a', d:'The one the stories were actually about.',
+   all:50, critdmg:4, sfx:'mythic'},
   {n:"Hell's Judgement",       img:IMG_HELL,     px:true, fil:F.hell,   cost:3e20,   pow:3.8e13, col:'#d62030', d:'Sentence first. Trial never.',
    all:45, crit:6, sfx:'hell'},
   {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:1.6e22,   pow:9e14,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
@@ -64,7 +73,7 @@ const SWORDS = [
   {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:1.4e28,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
    all:120, forge:120, crit:10, critdmg:8, sfx:'behold', big:true}
 ];
-const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII'];
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX'];
 
 /* ---- FORGE: idle chroma per second ---- */
 const FORGE = [
@@ -609,8 +618,59 @@ const SFX = (()=>{
     if(crit) for(let i=0;i<10;i++)                 // and back down again
       tone(c,{type:'sine', f:base*8/Math.pow(2,i/12), at:.42+i*.022, dur:.4, vol:.05});
   }
+  function starwrathSlash(c,crit){                // a bell struck by something landing
+    const t=c.currentTime;
+    /* the impact: short lowpassed noise body over a sub thud */
+    const src=c.createBufferSource(); src.buffer=noiseBuf(c);
+    const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=1.2;
+    lp.frequency.setValueAtTime(1800,t); lp.frequency.exponentialRampToValueAtTime(200,t+.14);
+    const g=c.createGain();
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(crit?.3:.21,t+.006);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.16);
+    src.connect(lp).connect(g).connect(master); src.start(t); src.stop(t+.2);
+    tone(c,{type:'sine',f:120,f2:44,dur:.24,vol:.26});
+    /* the chime: bell partials, slightly stretched so it rings rather than hums */
+    [1046.5,1571,2093,3139.5].forEach((f,i)=>
+      tone(c,{type:'sine',f,at:.012+i*.008,dur:crit?1:.62,vol:(crit?.1:.075)-i*.012}));
+    if(crit){                                     // a second star lands behind it
+      tone(c,{type:'sine',f:1318.51,at:.16,dur:.9,vol:.07});
+      tone(c,{type:'sine',f:4186,f2:1046,at:.2,dur:.6,vol:.045});
+    }
+  }
+  function titaniumSlash(c,crit){                 // heavy metal, all attack
+    const t=c.currentTime;
+    swoosh(c,{dur:crit?.14:.09, vol:crit?.32:.24, f:5200, f2:900, q:3.2});
+    /* inharmonic partials are what make struck metal read as metal */
+    [1,2.76,5.4,8.93].forEach((r,i)=>
+      tone(c,{type:i<2?'square':'triangle', f:330*r, f2:330*r*.86,
+              at:i*.004, dur:(crit?.3:.18)/(1+i*.35), vol:(crit?.1:.075)/(1+i*.7)}));
+    tone(c,{type:'sine',f:96,f2:52,dur:.13,vol:.24});   // the weight behind it
+    if(crit) tone(c,{type:'square',f:2640,f2:1320,at:.03,dur:.16,vol:.05});
+  }
+  function mythicSlash(c,crit){                   // slow swell, choir underneath
+    const t=c.currentTime, dur=crit?1.15:.8, atk=crit?.22:.16;
+    /* detuned pairs on a wide major chord, faded in rather than struck */
+    [261.63,392,523.25,659.25,783.99].forEach((f,i)=>{
+      [-4,4].forEach(det=>{
+        const o=c.createOscillator(), g=c.createGain(), t0=t+i*.02;
+        o.type='triangle';
+        o.frequency.setValueAtTime(f,t0);
+        o.detune.setValueAtTime(det,t0);
+        g.gain.setValueAtTime(.0001,t0);
+        g.gain.linearRampToValueAtTime(.045,t0+atk);       // the swell
+        g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+        o.connect(g).connect(master); o.start(t0); o.stop(t0+dur+.05);
+      });
+    });
+    swoosh(c,{dur:.3,vol:.1,f:3800,f2:1200,q:1.8});
+    tone(c,{type:'sine',f:130.81,f2:98,dur:dur+.2,vol:.16});   // the floor under it
+    tone(c,{type:'sine',f:1567.98,at:atk,dur:dur*.8,vol:.06});
+    if(crit) [1046.5,1318.51,1567.98,2093].forEach((f,i)=>
+      tone(c,{type:'sine',f,at:.3+i*.07,dur:.9,vol:.05}));
+  }
   const KINDS={ electric, terra:terraSlash, fire:fireSlash, hell:hellSlash,
-                holy:holySlash, cosmic:cosmicSlash, behold:beholdSlash, chroma:chromaSlash };
+                holy:holySlash, cosmic:cosmicSlash, behold:beholdSlash, chroma:chromaSlash,
+                starwrath:starwrathSlash, titanium:titaniumSlash, mythic:mythicSlash };
 
   function arp(c,notes,{step=.06,dur=.22,vol=.13,type='triangle'}={}){
     notes.forEach((f,i)=>tone(c,{type,f,at:i*step,dur,vol}));
@@ -665,7 +725,7 @@ function freshMarket(){
            hist:PIG.map(g=>[g.base]), anchor:0, realised:0 };
 }
 const S = {
-  v:5, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  v:6, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
   moteBank:0, bestCps:0,
   /* prestige: totalBase is every finished run's chroma, refr is the lifetime
      shard count that drives the multiplier, shards is the spendable balance */
@@ -1755,7 +1815,7 @@ async function load(){
       S.owned=[]; for(let i=0;i<=best;i++) S.owned.push(i);
       S.sword=best;
     }
-    S.v=5;
+    S.v=6;
     /* Saves made before refraction existed have no lifetime counter, so their
        whole history becomes run one — they arrive with shards already waiting,
        which is the right reward for a long save. */
@@ -1816,6 +1876,17 @@ async function load(){
       .filter(d=>d.a<DIM_MAX);
     /* the exchange used to trade in chroma — clear any positions bought that way */
     if((o.v||0) < 4){ S.mkt.hold=[0,0,0,0]; S.mkt.cost=[0,0,0,0]; S.mkt.realised=0; }
+    /* v6 slotted Star Wrath in at index 9 and Titanium Sword + True Excalibur in
+       at 12 and 13, so every blade above True Night's Edge moved up. Without this
+       remap a save reopens holding whatever now sits at its old index — someone
+       who earned Murasama would find Hell's Judgement in their hand. Saves with
+       no version at all took the rescale branch above and are already correct. */
+    if((o.v||0) >= 1 && (o.v||0) < 6){
+      const SHIFT6=[0,1,2,3,4,5,6,7,8,10,11,14,15,16,17,18,19];
+      const moved = i => (Number.isInteger(i) && i>=0 && i<SHIFT6.length) ? SHIFT6[i] : 0;
+      S.owned = (Array.isArray(o.owned) ? o.owned : [0]).map(moved);
+      S.sword = moved(o.sword);
+    }
     S.forge = (o.forge||[]).concat(new Array(FORGE.length).fill(0)).slice(0,FORGE.length);
     S.owned = (S.owned||[]).filter(i=>i>=0&&i<SWORDS.length);
     if(!S.owned.length) S.owned=[0];
@@ -1845,7 +1916,7 @@ async function load(){
 $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
-  Object.assign(S,{v:5,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
+  Object.assign(S,{v:6,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
     totalBase:0,refr:0,shards:0,after:[],refractions:0,btier:[],fingers:[],ach:[],bursts:0,
     forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,furyUntil:0,furyPow:1,dim:[],
     tree:[null,null,null],treeCd:0,mkt:freshMarket()});
