@@ -817,6 +817,38 @@ function clickRate(){
   const span = Math.max(.35, (now - clickTimes[0])/1000);
   return clickTimes.length / span;
 }
+/* ---- mobile plumbing ------------------------------------------------- */
+const FX_MAX = 46;                       // live pop/shard nodes allowed at once
+let _rect=null;
+function orbRect(){
+  if(!_rect) _rect = orbEl.getBoundingClientRect();
+  return _rect;
+}
+const dropRect = () => { _rect=null; };
+addEventListener('resize', dropRect, {passive:true});
+addEventListener('scroll', dropRect, {passive:true});
+addEventListener('orientationchange', ()=>{ dropRect(); setTimeout(dropRect,300); });
+if(window.visualViewport){
+  visualViewport.addEventListener('resize', dropRect);
+  visualViewport.addEventListener('scroll', dropRect);
+}
+
+/* iOS ignores user-scalable=no. Double-tap zoom is handled properly by
+   `touch-action:manipulation` in the CSS (blocking touchend here would also
+   cancel the synthetic click and make motes uncatchable). Pinch-zoom gestures
+   still need swallowing explicitly. */
+addEventListener('gesturestart',  e=>e.preventDefault(), {passive:false});
+addEventListener('gesturechange', e=>e.preventDefault(), {passive:false});
+
+/* The shop rebuilds its whole DOM on a timer. If that lands between your finger
+   going down and coming up, the node you pressed is destroyed and the click
+   never fires — which is why buying things on a phone felt like it randomly
+   ignored you. We hold off repainting while a finger is down. */
+let _touchUntil=0;
+const busyTouching = () => Date.now() < _touchUntil;
+addEventListener('pointerdown', ()=>{ _touchUntil=Date.now()+700; }, {passive:true});
+addEventListener('pointerup',   ()=>{ _touchUntil=Date.now()+250; }, {passive:true});
+
 let hitT=null;
 function strike(x,y){
   recompute();
@@ -842,17 +874,27 @@ function strike(x,y){
     orbEl.classList.remove('hit'); bladeEl.classList.remove('swing'); num.classList.remove('bump');
   },600);
 
-  const r=orbEl.getBoundingClientRect();
+  /* getBoundingClientRect() forces a synchronous layout. Calling it inside the
+     click handler meant every tap flushed the whole page's layout — at 10 taps a
+     second on a phone that alone is enough to drop frames. Cached instead, and
+     invalidated whenever the layout can actually change. */
+  const r=orbRect();
   const px = x!=null ? x-r.left : r.width*(.35+Math.random()*.3);
   const py = y!=null ? y-r.top  : r.height*(.35+Math.random()*.3);
 
-  const pop=document.createElement('div');
-  pop.className='pop'+(isCrit?' crit':'');
-  pop.style.cssText=`left:${px}px;top:${py}px;color:${isCrit?'':SWORDS[S.sword].col}`;
-  pop.textContent=(isCrit?'CRIT ':'+')+fmt(gain);
-  fxEl.appendChild(pop); setTimeout(()=>pop.remove(),1000);
+  /* Hard ceiling on live particles. Each pop/shard is an animated DOM node that
+     lives for ~1s, so a fast player was asking a phone to composite 100+ of them
+     at once. Past the cap we keep the number popup and drop the confetti. */
+  const busy = fxEl.childElementCount;
+  if(busy < FX_MAX){
+    const pop=document.createElement('div');
+    pop.className='pop'+(isCrit?' crit':'');
+    pop.style.cssText=`left:${px}px;top:${py}px;color:${isCrit?'':SWORDS[S.sword].col}`;
+    pop.textContent=(isCrit?'CRIT ':'+')+fmt(gain);
+    fxEl.appendChild(pop); setTimeout(()=>pop.remove(),1000);
+  }
 
-  const n = isCrit?11:6;
+  const n = busy > FX_MAX*.6 ? 0 : (isCrit?11:6);
   for(let i=0;i<n;i++){
     const s=document.createElement('div'); s.className='shard';
     const a=Math.random()*Math.PI*2, dist=45+Math.random()*80;
@@ -865,7 +907,13 @@ function strike(x,y){
 }
 let paintQueued=false;
 function schedulePaint(){ if(paintQueued)return; paintQueued=true;
-  setTimeout(()=>{paintQueued=false;paintShop();},260); }
+  setTimeout(()=>{
+    paintQueued=false;
+    /* if a finger is still down, let the 900ms sweeper pick it up rather than
+       destroying the node the user is pressing */
+    if(busyTouching()) return;
+    paintShop();
+  },260); }
 
 window.addEventListener('pointerdown',()=>SFX.unlock(),{once:true});
 /* every button strikes — left, right and middle — so you can alternate fingers.
@@ -910,8 +958,19 @@ function spawnMote(flavour){
   const b=document.createElement('button');
   b.className='mote'+(ember?' ember':'');
   b.setAttribute('aria-label', ember?'Catch the ember mote':'Catch the prism mote');
-  b.style.left = (8+Math.random()*76)+'vw';
-  b.style.top  = (14+Math.random()*64)+'vh';
+  /* vw/vh put motes in a box that changes size whenever the mobile URL bar
+     slides, so a mote could drift off-screen — or land under the toast stack or
+     the admin button — and become uncatchable. Placed in real viewport pixels,
+     inset far enough that the whole 64-72px sprite stays reachable. */
+  const size = innerWidth < 820 ? 64 : 72;
+  const vv   = window.visualViewport;
+  const vw   = vv ? vv.width  : innerWidth;
+  const vh   = vv ? vv.height : innerHeight;
+  const padX = 12, padTop = 70, padBot = 116;      // header / toasts / admin fab
+  const maxX = Math.max(padX, vw - size - padX);
+  const maxY = Math.max(padTop, vh - size - padBot);
+  b.style.left = (padX + Math.random()*(maxX-padX)) + 'px';
+  b.style.top  = (padTop + Math.random()*(maxY-padTop)) + 'px';
   b.style.setProperty('--life', MOTE_LIFE+'ms');
   b.style.setProperty('--mote-img', 'url("'+IMG_MOTE+'")');
   let gone=false;
@@ -948,6 +1007,22 @@ function spawnMote(flavour){
     recompute(); paintHUD(); paintShop(); markDirty(); kill();
   });
   document.body.appendChild(b);
+  clampMote(b);
+}
+
+/* Rotating the phone shrinks the viewport under any mote already in flight.
+   Pull it back inside so it stays catchable instead of sitting off the edge. */
+function clampMote(b){
+  const fix=()=>{
+    if(!b.isConnected) return;
+    const vv=window.visualViewport;
+    const vw=vv?vv.width:innerWidth, vh=vv?vv.height:innerHeight;
+    const w=b.offsetWidth||64, h=b.offsetHeight||64;
+    b.style.left = Math.min(parseFloat(b.style.left)||0, Math.max(12, vw-w-12))+'px';
+    b.style.top  = Math.min(parseFloat(b.style.top) ||0, Math.max(70, vh-h-116))+'px';
+  };
+  addEventListener('resize', fix, {passive:true});
+  addEventListener('orientationchange', ()=>setTimeout(fix,300));
 }
 
 /* the fury banner, and the moment both are running at once */
@@ -994,6 +1069,12 @@ function attachDimmer(){
   if(S.dim.length===1) toast('Something has fastened onto the orb');
 }
 function hitDimmer(i){
+  /* `i` may be stale: the listener was bound with the index the dimmer had when
+     it was built, but S.dim gets spliced whenever one bursts, so every dimmer
+     after it shifted down and you ended up hitting the wrong one. Re-derive the
+     live index from the element instead. */
+  if(typeof i!=='number'){ i=dimEls.indexOf(i); }
+  if(i<0) return;
   const d=S.dim[i]; if(!d) return;
   d.h++;
   const el=dimEls[i];
@@ -1013,7 +1094,15 @@ function hitDimmer(i){
 }
 function buildDimmers(skipRemove){
   const wrap=orbEl;
-  if(!skipRemove) dimEls.forEach(e=>e.remove());
+  /* skipRemove used to mean "append new ones and leave the old ones in the DOM",
+     which stacked a fresh set of dimmers on top of the previous set every time
+     one burst — that's the pile of flickering blades on the orb. Now it only
+     spares the element currently playing its burst animation; everything else
+     is cleared, including any orphans left over from an earlier save. */
+  wrap.querySelectorAll('.dimmer').forEach(e=>{
+    if(skipRemove && e.classList.contains('burst')) return;
+    e.remove();
+  });
   dimEls=[];
   S.dim.forEach((d,i)=>{
     const el=document.createElement('button');
@@ -1024,7 +1113,7 @@ function buildDimmers(skipRemove){
     el.dataset.cracks=String(Math.min(d.h,DIM_HITS));
     el.style.setProperty('--dimg','url("'+IMG_DIM+'")');
     el.innerHTML='<i class="dfill"></i>';
-    el.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); hitDimmer(i); });
+    el.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); hitDimmer(el); });
     el.addEventListener('contextmenu',e=>e.preventDefault());
     wrap.appendChild(el);
     dimEls.push(el);
@@ -1073,7 +1162,10 @@ setInterval(()=>{
   if(S.god && S.chroma<1e30) S.chroma=1e30;
   paintHUD();
 },100);
-setInterval(paintShop, 900);
+setInterval(()=>{
+  if(document.hidden || busyTouching()) return;   // never yank the DOM mid-tap
+  paintShop();
+}, 900);
 
 /* ================= SAVE ================= */
 /* ================= SAVING =================
