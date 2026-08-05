@@ -91,6 +91,282 @@ const RUNES = [
   {n:'The Final Colour',   cost:6e20,   tag:'Everything', d:'Multiplies all chroma by 2.5 and adds 4x to crit power.',                f:s=>{s.allMult*=2.5;s.critDmg+=4}}
 ];
 
+/* ================= BUILDING TIERS =================
+   The thing that makes Cookie Clicker's shop never empty: every building has its
+   own upgrade ladder, unlocked by owning enough of it. Each rung doubles that one
+   building. Seventeen buildings x six rungs = 102 purchasables that arrive
+   staggered right through a run, so there is nearly always something turning
+   affordable in the next thirty seconds. */
+const BTIER = [
+  {at:10,  f:60,     n:'Honed'},
+  {at:25,  f:520,    n:'Tempered'},
+  {at:50,  f:16e3,   n:'Runebound'},
+  {at:100, f:1.8e7,  n:'Ascendant'},
+  {at:150, f:1.9e10, n:'Transcendent'},
+  {at:200, f:2e13,   n:'Absolute'}
+];
+/* stable id so a save survives the roster changing under it */
+const btId    = (b,t) => b+':'+t;
+const btCost  = (b,t) => Math.ceil(FORGE[b].cost * BTIER[t].f * (D.buildCost||1));
+const btHas   = (b,t) => (S.btier||[]).includes(btId(b,t));
+const btCount = b => BTIER.reduce((a,_,t)=>a+(btHas(b,t)?1:0),0);
+
+/* ---- the Constant-Click ladder ----
+   Clicking dies in every idle game unless it scales with the rest of the board.
+   Cookie Clicker fixes this with Thousand Fingers; this is the same idea. Each
+   Constant-Click earns extra for every OTHER forge building you own, so a big
+   idle empire quietly makes your first building matter again. */
+const FINGERS = [
+  {n:'Second Hand',      cost:9e3,   add:.05,
+   d:'Each Constant-Click earns +0.05/s for every other forge building you own.'},
+  {n:'Restless Hands',   cost:450e3, add:.5,
+   d:'Each Constant-Click earns a further +0.5/s per other building.'},
+  {n:'Hundred Hands',    cost:24e6,  add:6,
+   d:'Each Constant-Click earns a further +6/s per other building.'},
+  {n:'Blurred Hands',    cost:3e9,   add:70,
+   d:'Each Constant-Click earns a further +70/s per other building.'},
+  {n:'Ten Thousand Hands',cost:900e12,add:9e3,
+   d:'Each Constant-Click earns a further +9K/s per other building.'},
+  {n:'The Unseen Hand',  cost:2e18,  add:12e6,
+   d:'Each Constant-Click earns a further +12M/s per other building.'}
+];
+const fingerBonus = () => {
+  const others = S.forge.reduce((a,c,i)=>i?a+c:a, 0);
+  return (S.fingers||[]).reduce((a,i)=>a+(FINGERS[i]?FINGERS[i].add:0),0) * others;
+};
+
+/* ================= REFRACTION (PRESTIGE) =================
+   The wall this game used to hit: you bought B E H O L D and there was nothing
+   after it. Refracting shatters the run — chroma, forge, runes and the sword
+   rack all go back to zero — and pays out Prism Shards scaled off every point of
+   chroma you have ever earned, across every run.
+
+   Two separate numbers, the way Cookie Clicker splits prestige level from
+   heavenly chips: `refr` is your lifetime shard count and never falls, so the
+   permanent multiplier it grants can't be spent away. `shards` is the loose
+   change you actually pay the Afterglow with.
+
+   Cube root, so each further shard costs eight times the chroma of the last —
+   that's what stops a long run from trivialising the next one. */
+const REFR_BASE = 1e12;              // chroma-ever per first shard
+const REFR_OPEN = 1e12;              // tab appears once you've earned this much
+const shardsAt  = ever => Math.floor(Math.cbrt(Math.max(0, ever) / REFR_BASE));
+
+/* lifetime chroma without touching a single `S.total +=` site: each refraction
+   banks the finished run into totalBase and zeroes the live counter */
+const totalEver = () => (S.totalBase || 0) + S.total;
+const shardsReady = () => Math.max(0, shardsAt(totalEver()) - (S.refr || 0));
+const refrOpen = () => totalEver() >= REFR_OPEN || (S.refr || 0) > 0;
+
+/* ---- AFTERGLOW: permanent upgrades bought with shards ---- */
+const AFTER = [
+  {n:'Afterimage',        cost:1,   tag:'Head start',
+   d:'Every refraction from now on begins with 500K chroma already in hand.',
+   f:P=>P.startChroma+=500e3},
+  {n:'Muscle Memory',     cost:3,   tag:'Clicks',
+   d:'Your arm remembers the swing. Triples click chroma in every run.',
+   f:P=>P.clickMult*=3},
+  {n:'Banked Heat',       cost:6,   tag:'Away',
+   d:'The forge keeps 80% of its output while you are away, instead of half.',
+   f:P=>P.offRate=Math.max(P.offRate,.8)},
+  {n:'The Long Vault',    cost:12,  tag:'Away',
+   d:'Away earnings keep accruing for a full day instead of eight hours.',
+   f:P=>P.offCap=Math.max(P.offCap,24)},
+  {n:'Shard Resonance',   cost:20,  tag:'Shards',
+   d:'Every Prism Shard you own is worth +1.5% all chroma instead of +1%.',
+   f:P=>P.shardWorth=.015},
+  {n:'Mote Memory',       cost:35,  tag:'Motes',
+   d:'Prism motes fall twice as often, in every run, forever.',
+   f:P=>P.moteRate*=.5},
+  {n:'Kept Edge',         cost:60,  tag:'Head start',
+   d:'Refracting no longer takes your swords. The whole rack carries over.',
+   f:P=>P.keepSwords=true},
+  {n:'Forge Memory',      cost:110, tag:'Head start',
+   d:'Begin every refraction with 15 of each of the first six forge buildings.',
+   f:P=>P.startForge=Math.max(P.startForge,15)},
+  {n:'Prismbind',         cost:200, tag:'Everything',
+   d:'All chroma ×3, permanently, on top of everything else.',
+   f:P=>P.allMult*=3},
+  {n:'The Unbroken Light',cost:400, tag:'Everything',
+   d:'All chroma ×5 and +5 crit power. Nothing is louder than this.',
+   f:P=>{P.allMult*=5; P.critDmgAdd+=5}}
+];
+
+function afterEffects(){
+  const P = {allMult:1, clickMult:1, moteRate:1, critDmgAdd:0, shardWorth:.01,
+             offRate:0, offCap:0, startChroma:0, startForge:0, keepSwords:false};
+  (S.after||[]).forEach(i=>{ if(AFTER[i]) AFTER[i].f(P); });
+  return P;
+}
+
+/* what the shard count is actually multiplying by right now */
+function refrBonus(){
+  const P = D.after || afterEffects();
+  return 1 + (S.refr || 0) * P.shardWorth;
+}
+
+function refract(){
+  const gain = shardsReady();
+  if(gain <= 0) return false;
+  const P = afterEffects();
+
+  S.totalBase = totalEver();          // bank the finished run
+  S.refr   = shardsAt(S.totalBase);   // lifetime count — only ever climbs
+  S.shards = (S.shards || 0) + gain;
+
+  /* the run itself goes back to nothing */
+  S.total  = 0;
+  S.chroma = P.startChroma;
+  S.forge  = new Array(FORGE.length).fill(0);
+  if(P.startForge) for(let i=0;i<6 && i<FORGE.length;i++) S.forge[i] = P.startForge;
+  S.runes  = [];
+  /* building ladders are run upgrades, so they go with the run — deeds and
+     the burst counter are lifetime records and stay */
+  S.btier  = [];
+  S.fingers= [];
+  S.dim    = [];
+  if(!P.keepSwords){ S.owned = [0]; S.sword = 0; }
+  /* holdings are indexed off the income of the run that bought them, so they
+     have to clear — otherwise old shares cash out at old-run prices */
+  S.mkt = freshMarket();
+  S.frenzyUntil = 0; S.furyUntil = 0; S.furyPow = 1;
+  S.treeCd = 0;                        // the tree itself carries over
+
+  buildDimmers();
+  recompute(); checkAch(); paintBlade(); paintHUD(); paintShop(); markDirty();
+  return gain;
+}
+
+
+/* ================= ACHIEVEMENTS & MILK =================
+   Every deed is worth a permanent slice of production, so the completionist
+   track and the power track are the same track — which is exactly why Cookie
+   Clicker's achievements feel like progress instead of badges. */
+const MILK_PER = .02;                      // all chroma, per deed earned
+const MILK = [
+  {at:0,   n:'Clear Light'},   {at:.06, n:'Pale Rose'},
+  {at:.14, n:'Amber'},         {at:.24, n:'Verdant'},
+  {at:.34, n:'Cyan'},          {at:.44, n:'Cobalt'},
+  {at:.54, n:'Violet'},        {at:.64, n:'Crimson'},
+  {at:.74, n:'Gold'},          {at:.84, n:'Iridescent'},
+  {at:.92, n:'Prismatic'},     {at:1,   n:'The Whole Spectrum'}
+];
+function milkTier(){
+  const f = ACH.length ? (S.ach||[]).length/ACH.length : 0;
+  let m = MILK[0];
+  MILK.forEach(t=>{ if(f>=t.at) m=t; });
+  return {name:m.n, frac:f};
+}
+
+const ACH = (()=>{
+  const A=[], add=(id,n,cat,d,test)=>A.push({id,n,cat,d,test});
+  const step = n => n.toLocaleString();
+
+  [1e3,1e5,1e7,1e9,1e12,1e15,1e18,1e21,1e24,1e27,1e30,1e33].forEach((v,k)=>
+    add('chr'+k, `Chroma ${fmt(v)}`, 'Chroma',
+      `Earn ${fmt(v)} chroma in one refraction.`, ()=>S.total>=v));
+
+  [100,1e3,1e4,5e4,1e5,5e5,1e6,5e6,25e6].forEach((v,k)=>
+    add('clk'+k, `${fmt(v)} strikes`, 'Strikes',
+      `Strike the orb ${step(v)} times.`, ()=>S.clicks>=v));
+
+  [10,250,5e3,5e4,5e5,5e6,5e7].forEach((v,k)=>
+    add('crt'+k, `${fmt(v)} crits`, 'Strikes',
+      `Land ${step(v)} critical hits.`, ()=>S.crits>=v));
+
+  [5,8,10,13,16].forEach((v,k)=>
+    add('cps'+k, `${v} strikes a second`, 'Strikes',
+      `Reach ${v} clicks per second.`, ()=>(S.bestCps||0)>=v));
+
+  [100,1e4,1e6,1e9,1e12,1e15,1e18,1e21,1e24,1e27].forEach((v,k)=>
+    add('for'+k, `Forge ${fmt(v)}/s`, 'Forge',
+      `Reach ${fmt(v)} chroma per second.`, ()=>D.cps>=v));
+
+  /* the bulk of the list: seven rungs on every building, exactly the way
+     Cookie Clicker paces its own building achievements */
+  FORGE.forEach((f,b)=>{
+    [1,10,25,50,100,150,200].forEach((n,k)=>
+      add(`b${b}_${k}`, `${n} \u00d7 ${f.n}`, 'Forge',
+        `Own ${step(n)} ${f.n}${n===1?'':'s'}.`, ()=>S.forge[b]>=n));
+  });
+
+  [50,200,500,1e3,2e3,3400].forEach((v,k)=>
+    add('all'+k, `${step(v)} buildings`, 'Forge',
+      `Own ${step(v)} forge buildings at once.`,
+      ()=>S.forge.reduce((a,c)=>a+c,0)>=v));
+
+  SWORDS.forEach((w,i)=>
+    add('sw'+i, w.n, 'Armory', `Forge the ${w.n}.`, ()=>S.owned.includes(i)));
+
+  [1,5,10,14,RUNES.length].forEach((v,k)=>
+    add('rn'+k, `${v} rune${v===1?'':'s'}`, 'Runes',
+      `Bind ${v} rune${v===1?'':'s'} in one refraction.`, ()=>S.runes.length>=v));
+
+  [1,5,25,100,500,2e3,1e4].forEach((v,k)=>
+    add('mt'+k, `${step(v)} mote${v===1?'':'s'}`, 'Motes',
+      `Catch ${step(v)} prism motes.`, ()=>S.motes>=v));
+
+  [1,10,50,250,1e3].forEach((v,k)=>
+    add('dm'+k, `${step(v)} burst`, 'Dimmers',
+      `Burst ${step(v)} dimmer${v===1?'':'s'}.`, ()=>(S.bursts||0)>=v));
+
+  [1e6,1e9,1e12,1e16,1e20].forEach((v,k)=>
+    add('mk'+k, `${fmt(v)} realised`, 'Exchange',
+      `Realise ${fmt(v)} chroma of trading profit.`, ()=>(S.mkt.realised||0)>=v));
+
+  [1,2,3].forEach((v,k)=>
+    add('tr'+k, `${v} slotted`, 'Tree',
+      `Fill ${v} Prism Tree slot${v===1?'':'s'}.`, ()=>(D.tree?D.tree.filled:0)>=v));
+
+  [1,3,10,25,50].forEach((v,k)=>
+    add('rf'+k, `${v} refraction${v===1?'':'s'}`, 'Refraction',
+      `Refract ${v} time${v===1?'':'s'}.`, ()=>(S.refractions||0)>=v));
+
+  [1,10,100,1e3,1e4,1e5].forEach((v,k)=>
+    add('sh'+k, `${step(v)} shard${v===1?'':'s'}`, 'Refraction',
+      `Hold ${step(v)} lifetime prism shard${v===1?'':'s'}.`, ()=>(S.refr||0)>=v));
+
+  [1,5,AFTER.length].forEach((v,k)=>
+    add('ag'+k, `${v} afterglow`, 'Refraction',
+      `Keep ${v} Afterglow upgrade${v===1?'':'s'}.`, ()=>(S.after||[]).length>=v));
+
+  /* every rung of every ladder bought */
+  add('btAll', 'Every ladder climbed', 'Forge',
+    'Own every building tier upgrade at once.',
+    ()=>(S.btier||[]).length >= FORGE.length*BTIER.length);
+  add('fgAll', 'Every hand', 'Forge',
+    'Buy the whole Constant-Click line.',
+    ()=>(S.fingers||[]).length >= FINGERS.length);
+
+  return A;
+})();
+const achById = Object.fromEntries(ACH.map(a=>[a.id,a]));
+
+let achQueue=[], achFlush=null;
+function checkAch(){
+  const have = new Set(S.ach||[]);
+  let got=0;
+  for(const a of ACH){
+    if(have.has(a.id)) continue;
+    let ok=false;
+    try{ ok=!!a.test(); }catch(e){}
+    if(ok){ S.ach.push(a.id); achQueue.push(a.n); got++; }
+  }
+  if(!got) return;
+  recompute(); paintHUD();
+  /* a refraction or a big purchase can trip a dozen at once — one toast, not
+     twelve stacked on top of each other */
+  clearTimeout(achFlush);
+  achFlush=setTimeout(()=>{
+    const q=achQueue; achQueue=[];
+    if(!q.length) return;
+    SFX.rune();
+    toast(q.length===1 ? `Deed earned — ${q[0]}`
+                       : `${q.length} deeds earned — ${q.slice(0,2).join(', ')} and more`);
+    markDirty();
+  }, 260);
+}
+
 
 /* ================= THE SPECTRUM EXCHANGE =================
    Motes are the capital here, chroma is the payout. A share costs motes in
@@ -371,8 +647,12 @@ function freshMarket(){
            hist:PIG.map(g=>[g.base]), anchor:0, realised:0 };
 }
 const S = {
-  v:4, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
+  v:5, mute:false, ts:0, dev:false, god:false, chroma:0, total:0, clicks:0, crits:0, motes:0,
   moteBank:0, bestCps:0,
+  /* prestige: totalBase is every finished run's chroma, refr is the lifetime
+     shard count that drives the multiplier, shards is the spendable balance */
+  totalBase:0, refr:0, shards:0, after:[], refractions:0,
+  btier:[], fingers:[], ach:[], bursts:0,
   sword:0, owned:[0], forge:new Array(FORGE.length).fill(0), runes:[],
   frenzyUntil:0, frenzyPow:2, furyUntil:0, furyPow:1,
   dim:[],
@@ -408,14 +688,30 @@ function recompute(){
     if(w.all) allBonus+=w.all;
   });
   const T = D.tree = treeEffects();
-  D.allMult   = s.allMult * (1+allBonus/100) * T.allMult;
+  const P = D.after = afterEffects();
+  /* Milk: every deed earned is a permanent slice of all production, so chasing
+     the list and chasing the number are the same activity. */
+  D.milkName  = milkTier().name;
+  D.milkFrac  = milkTier().frac;
+  D.milk      = 1 + (S.ach||[]).length * MILK_PER;
+  /* Shards multiply everything. This is the whole point of a refraction: the
+     next run outruns the last one from the first click. */
+  D.refrMult  = 1 + (S.refr||0) * P.shardWorth;
+  D.allMult   = s.allMult * (1+allBonus/100) * T.allMult * P.allMult * D.refrMult * D.milk;
   D.forgeMult = s.forgeMult * (1+forgeBonus/100) * T.forgeMult;
   D.crit      = Math.min(s.crit * T.critMult, 60);
-  D.critDmg   = Math.max(1, (s.critDmg + T.critDmgAdd) * T.critDmgMult);
-  D.moteRate  = s.moteRate * T.moteRate;
+  D.critDmg   = Math.max(1, (s.critDmg + T.critDmgAdd + P.critDmgAdd) * T.critDmgMult);
+  D.moteRate  = s.moteRate * T.moteRate * P.moteRate;
   D.buildCost = T.buildCost;
-  D.perClick  = SWORDS[S.sword].pow * s.clickMult * D.allMult * T.clickMult;
-  D.cps       = S.forge.reduce((a,c,i)=>a+c*FORGE[i].cps,0) * D.forgeMult * D.allMult;
+  D.offRate   = Math.max(T.offRate, P.offRate);
+  D.offCap    = Math.max(T.offCap,  P.offCap);
+  D.perClick  = SWORDS[S.sword].pow * s.clickMult * P.clickMult * D.allMult * T.clickMult;
+  /* per-building output: base rate, doubled once per tier upgrade owned, with
+     the Constant-Click line adding a slice of the rest of the board */
+  D.bmult = FORGE.map((_,b)=>Math.pow(2, btCount(b)));
+  D.hands = fingerBonus();
+  D.each  = FORGE.map((f,b)=>(f.cps + (b===0 ? D.hands : 0)) * D.bmult[b]);
+  D.cps   = S.forge.reduce((a,c,b)=>a + c*D.each[b], 0) * D.forgeMult * D.allMult;
   D.frenzy    = Date.now() < S.frenzyUntil ? (S.frenzyPow||2) : 1;
   D.fury      = Date.now() < S.furyUntil   ? (S.furyPow||1)  : 1;
   D.combo     = D.frenzy>1 && D.fury>1;
@@ -431,8 +727,8 @@ const motePrice = i => S.mkt.p[i] / PAR;                 // motes per share
 const sharePay  = i => S.mkt.p[i] * D.unit;              // chroma per share, before fee
 const parValue  = motes => motes * PAR * D.unit;         // what those motes were worth going in
 const vaultValue = () => S.mkt.hold.reduce((a,n,i)=>a + n*sharePay(i)*(1-MKT_FEE), 0);
-const treeUnlocked = () => S.total >= TREE_UNLOCK;
-const mktUnlocked  = () => S.total >= MKT_UNLOCK;
+const treeUnlocked = () => totalEver() >= TREE_UNLOCK;
+const mktUnlocked  = () => totalEver() >= MKT_UNLOCK;
 function swapCost(){ return Math.max(25e3, D.cps*90); }
 
 function mktStep(n){
@@ -493,6 +789,13 @@ function paintHUD(){
   $('rPer').textContent = fmt(D.perClick*D.frenzy*D.fury + (D.fury>1 ? D.cps*FURY_TAP*D.frenzy : 0));
   $('rSec').textContent = fmt(D.cps*(1-drainFrac()));
   $('sTotal').textContent = fmt(S.total);
+  /* "Chroma earned" drops to zero on a refraction, so once you've refracted the
+     panel also carries the number that never resets */
+  const erow=$('rowEver');
+  if(erow){
+    erow.hidden = !(S.totalBase>0);
+    if(!erow.hidden) $('sEver').textContent = fmt(totalEver());
+  }
   $('sClicks').textContent = S.clicks.toLocaleString();
   $('sCrits').textContent = S.crits.toLocaleString();
   $('sCC').textContent = D.crit.toFixed(0)+'%';
@@ -528,6 +831,21 @@ function paintHUD(){
     trow.hidden = !treeUnlocked();
     if(!trow.hidden) $('sTree').textContent = (D.tree?D.tree.filled:0)+' / 3';
   }
+  const rrow=$('rowRefr'), rmul=$('rowRmul');
+  if(rrow){
+    rrow.hidden = !refrOpen();
+    if(!rrow.hidden){
+      const ready=shardsReady();
+      $('sRefr').textContent = (S.shards||0).toLocaleString() + (ready>0 ? ` (+${ready})` : '');
+    }
+  }
+  if(rmul){
+    rmul.hidden = !refrOpen();
+    if(!rmul.hidden) $('sRmul').textContent = '×'+refrBonus().toFixed(2);
+  }
+  const arow=$('sAch'), mrow2=$('sMilk');
+  if(arow) arow.textContent = (S.ach||[]).length+' / '+ACH.length;
+  if(mrow2) mrow2.textContent = (D.milkName||'Clear Light')+' ×'+(D.milk||1).toFixed(2);
 }
 
 function row({ico,name,desc,perk,price,sub,cls,onclick,disabled}){
@@ -575,21 +893,65 @@ function paintShop(){
     });
   }
   if(tab==='forge'){
+    /* Upgrades first — this is the shelf that keeps the shop from ever being
+       empty, so it wants to be the first thing you see when you open the tab. */
+    let ups=0;
+    FINGERS.forEach((h,i)=>{
+      if((S.fingers||[]).includes(i)) return;
+      if(i>0 && !(S.fingers||[]).includes(i-1)) return;      // strictly in order
+      if(S.forge[0]<1) return;
+      const afford=S.chroma>=h.cost; ups++;
+      box.appendChild(row({
+        ico:`<div class="ico"><span class="glyph">✋</span></div>`,
+        name:h.n, desc:h.d, perk:'⟡ Constant-Click · scales with your whole forge',
+        price:fmt(h.cost), sub:'one-time',
+        cls:afford?'':'locked', disabled:!afford,
+        onclick:()=>{ if(S.chroma<h.cost)return; S.chroma-=h.cost; S.fingers.push(i);
+          SFX.rune(); toast(`${h.n} — your Constant-Clicks now feed on the whole forge`);
+          recompute(); paintHUD(); paintShop(); checkAch(); markDirty(); }
+      }));
+    });
+    FORGE.forEach((f,b)=>{
+      BTIER.forEach((t,ti)=>{
+        if(btHas(b,ti)) return;
+        if(S.forge[b] < t.at) return;                        // not earned yet
+        const c=btCost(b,ti), afford=S.chroma>=c; ups++;
+        box.appendChild(row({
+          ico:`<div class="ico"><span class="glyph">${f.g}</span></div>`,
+          name:`${t.n} ${f.n}`,
+          desc:`Your ${f.n}s work twice as hard. Unlocked by owning ${t.at}.`,
+          perk:`⟡ ${f.n} output ×2 — now ×${Math.pow(2,btCount(b)+1)} in total`,
+          price:fmt(c), sub:'one-time',
+          cls:afford?'':'locked', disabled:!afford,
+          onclick:()=>{ const cc=btCost(b,ti); if(S.chroma<cc)return;
+            S.chroma-=cc; S.btier.push(btId(b,ti)); SFX.rune();
+            toast(`${t.n} ${f.n} — output doubled`);
+            recompute(); paintHUD(); paintShop(); checkAch(); markDirty(); }
+        }));
+      });
+    });
+    if(ups){
+      const sep=document.createElement('div');
+      sep.className='eyebrow'; sep.textContent='Buildings';
+      box.appendChild(sep);
+    }
     FORGE.forEach((f,i)=>{
       const c=forgeCost(i), afford=S.chroma>=c;
       const visible = i===0 || S.forge[i-1]>0 || S.total>=FORGE[i].cost*.35;
       if(!visible) return;
-      const each=f.cps*D.forgeMult*D.allMult, mine=each*S.forge[i];
+      const each=D.each[i]*D.forgeMult*D.allMult, mine=each*S.forge[i];
       const share=D.cps>0?Math.round(mine/D.cps*100):0;
+      const tiers=btCount(i);
       box.appendChild(row({
         ico:`<div class="ico"><span class="glyph">${f.g}</span></div>`,
-        name:f.n+(S.forge[i]?` <span style="color:var(--cyan);font-family:var(--mono);font-size:12px">×${S.forge[i]}</span>`:''),
+        name:f.n+(S.forge[i]?` <span style="color:var(--cyan);font-family:var(--mono);font-size:12px">×${S.forge[i]}</span>`:'')
+             +(tiers?` <span style="color:var(--gold);font-family:var(--mono);font-size:11px">▲${tiers}</span>`:''),
         desc:f.d,
         perk:`⟡ ${fmt(each)} chroma/s each`+(S.forge[i]?` · yours make ${fmt(mine)}/s, ${share}% of your income`:''),
         price:fmt(c), sub:'buy one',
         cls:afford?'':'locked', disabled:!afford,
         onclick:()=>{ const cc=forgeCost(i); if(S.chroma<cc)return;
-          S.chroma-=cc; S.forge[i]++; SFX.buy(); recompute(); paintHUD(); paintShop(); markDirty(); }
+          S.chroma-=cc; S.forge[i]++; SFX.buy(); recompute(); paintHUD(); paintShop(); checkAch(); markDirty(); }
       }));
     });
     if(!box.children.length) box.innerHTML='<div class="empty">The forge is cold.<br>Earn 30 chroma to buy your first whetstone.</div>';
@@ -613,7 +975,122 @@ function paintShop(){
   }
   if(tab==='market') paintMarket(box);
   if(tab==='tree')   paintTree(box);
+  if(tab==='prism')  paintPrism(box);
+  if(tab==='deeds')  paintDeeds(box);
   box.scrollTop=keepScroll;
+}
+
+/* ================= DEEDS PANEL ================= */
+function paintDeeds(box){
+  const have=new Set(S.ach||[]);
+  const m=milkTier();
+  const head=document.createElement('div');
+  head.className='refrhead ready';
+  head.innerHTML=`
+    <div class="rtop">
+      <div><span>Deeds</span><b>${have.size} / ${ACH.length}</b></div>
+      <div><span>Milk</span><b class="up">${m.name}</b></div>
+      <div><span>All chroma</span><b class="up">×${D.milk.toFixed(2)}</b></div>
+      <div><span>Next deed</span><b>+${(MILK_PER*100).toFixed(0)}%</b></div>
+    </div>
+    <div class="milkbar"><i style="width:${(m.frac*100).toFixed(1)}%"></i></div>
+    <div class="rwarn">Every deed permanently multiplies all chroma. They survive
+      refraction — the list only ever grows.</div>`;
+  box.appendChild(head);
+
+  /* group by category, earned first within each */
+  const cats=[];
+  ACH.forEach(a=>{ if(!cats.includes(a.cat)) cats.push(a.cat); });
+  cats.forEach(cat=>{
+    const list=ACH.filter(a=>a.cat===cat);
+    const got=list.filter(a=>have.has(a.id)).length;
+    const eb=document.createElement('div');
+    eb.className='eyebrow';
+    eb.textContent=`${cat} · ${got} / ${list.length}`;
+    box.appendChild(eb);
+
+    const grid=document.createElement('div');
+    grid.className='deedgrid';
+    list.forEach(a=>{
+      const on=have.has(a.id);
+      const d=document.createElement('div');
+      d.className='deed'+(on?' on':'');
+      d.title=on ? a.d : 'Locked — '+a.d;
+      d.innerHTML=`<b>${on?a.n:'???'}</b><em>${a.d}</em>`;
+      grid.appendChild(d);
+    });
+    box.appendChild(grid);
+  });
+}
+
+/* ================= REFRACTION PANEL ================= */
+function paintPrism(box){
+  if(!refrOpen()){
+    box.innerHTML=`<div class="empty">The orb is still whole.<br>
+      Earn ${fmt(REFR_OPEN)} chroma in total to learn how to break it.</div>`;
+    return;
+  }
+  const ready = shardsReady();
+  const P = D.after || afterEffects();
+  const nextAt = Math.pow((S.refr||0)+ready+1, 3) * REFR_BASE;
+  const spent = (S.after||[]).reduce((a,i)=>a+AFTER[i].cost,0);
+
+  const head=document.createElement('div');
+  head.className='refrhead'+(ready>0?' ready':'');
+  head.innerHTML=`
+    <div class="rtop">
+      <div><span>Prism Shards</span><b>${(S.shards||0).toLocaleString()}</b></div>
+      <div><span>Lifetime shards</span><b>${(S.refr||0).toLocaleString()}</b></div>
+      <div><span>All chroma</span><b class="up">×${refrBonus().toFixed(2)}</b></div>
+      <div><span>Refractions</span><b>${(S.refractions||0).toLocaleString()}</b></div>
+    </div>
+    <div class="rnote">Lifetime chroma <b>${fmt(totalEver())}</b> · next shard at <b>${fmt(nextAt)}</b></div>
+    <button class="rbtn" id="refrGo"${ready>0?'':' disabled'}>
+      ${ready>0 ? `Refract for ${ready.toLocaleString()} shard${ready===1?'':'s'}` : 'Nothing to refract yet'}
+    </button>
+    <div class="rwarn">Resets chroma, the forge, runes, dimmers${P.keepSwords?'':' and your swords'} and clears the
+      exchange floor. Keeps the Prism Tree, your shards, and everything below.</div>`;
+  box.appendChild(head);
+
+  head.querySelector('#refrGo').addEventListener('click',()=>{
+    const n=shardsReady(); if(n<=0) return;
+    const lost = P.keepSwords ? 'the run' : 'the run and your sword rack';
+    if(!confirm(`Refract now?\n\nYou gain ${n} Prism Shard${n===1?'':'s'} and lose ${lost}.\nThis cannot be undone.`)) return;
+    S.refractions=(S.refractions||0)+1;
+    const got=refract();
+    SFX.rune();
+    toast(`Refracted — +${got} shard${got===1?'':'s'}, all chroma now ×${refrBonus().toFixed(2)}`);
+  });
+
+  const eyebrow=document.createElement('div');
+  eyebrow.className='eyebrow';
+  eyebrow.textContent=`Afterglow · ${(S.after||[]).length} / ${AFTER.length} kept`;
+  box.appendChild(eyebrow);
+
+  AFTER.forEach((u,i)=>{
+    const have=(S.after||[]).includes(i);
+    const afford=(S.shards||0)>=u.cost;
+    box.appendChild(row({
+      ico:`<div class="ico"><span class="glyph">${have?'◆':'◇'}</span></div>`,
+      name:u.n, desc:u.d, perk:'◈ '+u.tag,
+      price: have ? 'kept' : u.cost.toLocaleString(),
+      sub: have ? 'permanent' : `shard${u.cost===1?'':'s'}`,
+      cls: have ? 'owned' : (afford ? '' : 'locked'),
+      disabled: have || !afford,
+      onclick: have ? null : ()=>{
+        if((S.shards||0) < u.cost) return;
+        S.shards-=u.cost; S.after.push(i); SFX.rune();
+        toast(`Afterglow kept — ${u.n}`);
+        recompute(); paintBlade(); paintHUD(); paintShop(); markDirty();
+      }
+    }));
+  });
+  if(spent>0){
+    const n=document.createElement('div');
+    n.className='mnote';
+    n.textContent='Spending shards never lowers your multiplier — that runs off your lifetime count, which only ever climbs.';
+    box.appendChild(n);
+  }
 }
 
 /* ================= EXCHANGE PANEL ================= */
@@ -656,7 +1133,7 @@ function paintMarket(box){
   if(!mktUnlocked()){
     box.innerHTML=`<div class="empty">The exchange floor is closed to you.<br>
       Earn ${fmt(MKT_UNLOCK)} chroma in total to be let in.<br>
-      <span style="color:var(--dim)">${fmt(S.total)} so far</span></div>`;
+      <span style="color:var(--dim)">${fmt(totalEver())} so far</span></div>`;
     return;
   }
   const head=document.createElement('div');
@@ -744,7 +1221,7 @@ function paintTree(box){
   if(!treeUnlocked()){
     box.innerHTML=`<div class="empty">The Prism Tree has not grown for you yet.<br>
       Earn ${fmt(TREE_UNLOCK)} chroma in total to reach it.<br>
-      <span style="color:var(--dim)">${fmt(S.total)} so far</span></div>`;
+      <span style="color:var(--dim)">${fmt(totalEver())} so far</span></div>`;
     return;
   }
   const now=Date.now(), locked=now<S.treeCd, wait=Math.ceil((S.treeCd-now)/1000);
@@ -1052,7 +1529,7 @@ function announceCombo(){
    which means deliberately watching your income fall for a while. */
 const DIM_MAX=6, DIM_DRAIN=.06, DIM_PAY=1.7, DIM_HITS=3;
 const DIM_UNLOCK=2e9, DIM_WAIT_MIN=45e3, DIM_WAIT_MAX=120e3;
-const dimUnlocked = () => S.total >= DIM_UNLOCK;
+const dimUnlocked = () => totalEver() >= DIM_UNLOCK;
 const drainFrac  = () => Math.min(.6, S.dim.length*DIM_DRAIN);
 const dimStored  = () => S.dim.reduce((a,d)=>a+d.s,0);
 
@@ -1083,7 +1560,7 @@ function hitDimmer(i){
   SFX.slash(false, S.sword, SWORDS[S.sword].sfx);
   if(d.h>=DIM_HITS){
     const pay=d.s*DIM_PAY;
-    S.chroma+=pay; S.total+=pay;
+    S.chroma+=pay; S.total+=pay; S.bursts=(S.bursts||0)+1;
     S.dim.splice(i,1);
     SFX.mote();
     toast(`Dimmer burst — +${fmt(pay)} chroma`);
@@ -1163,7 +1640,9 @@ setInterval(()=>{
   paintHUD();
 },100);
 setInterval(()=>{
-  if(document.hidden || busyTouching()) return;   // never yank the DOM mid-tap
+  if(document.hidden) return;
+  checkAch();
+  if(busyTouching()) return;   // never yank the DOM mid-tap
   paintShop();
 }, 900);
 
@@ -1271,7 +1750,31 @@ async function load(){
       S.owned=[]; for(let i=0;i<=best;i++) S.owned.push(i);
       S.sword=best;
     }
-    S.v=4;
+    S.v=5;
+    /* Saves made before refraction existed have no lifetime counter, so their
+       whole history becomes run one — they arrive with shards already waiting,
+       which is the right reward for a long save. */
+    const num = (v,d)=> (isFinite(+v) && +v>=0) ? +v : d;
+    S.totalBase  = num(o.totalBase, 0);
+    S.refr       = Math.floor(num(o.refr, 0));
+    S.shards     = Math.floor(num(o.shards, 0));
+    S.refractions= Math.floor(num(o.refractions, 0));
+    S.after      = Array.isArray(o.after)
+      ? [...new Set(o.after.filter(i=>Number.isInteger(i) && i>=0 && i<AFTER.length))]
+      : [];
+    /* a shard count can never exceed what the lifetime total could have paid for */
+    S.refr = Math.min(S.refr, shardsAt(S.totalBase + num(o.total,0)));
+    const spent = S.after.reduce((a,i)=>a+AFTER[i].cost, 0);
+    S.shards = Math.min(S.shards, Math.max(0, S.refr - spent));
+    /* new arrays: drop anything that no longer exists in the roster, dedupe */
+    const validIds = new Set();
+    FORGE.forEach((_,b)=>BTIER.forEach((_,t)=>validIds.add(btId(b,t))));
+    S.btier   = Array.isArray(o.btier) ? [...new Set(o.btier.filter(x=>validIds.has(x)))] : [];
+    S.fingers = Array.isArray(o.fingers)
+      ? [...new Set(o.fingers.filter(i=>Number.isInteger(i)&&i>=0&&i<FINGERS.length))] : [];
+    S.ach     = Array.isArray(o.ach)
+      ? [...new Set(o.ach.filter(x=>typeof x==='string' && achById[x]))] : [];
+    S.bursts  = Math.floor(num(o.bursts, 0));
     /* saves from before the tree and the exchange simply arrive without them */
     const t=Array.isArray(o.tree)?o.tree:[];
     S.tree=[0,1,2].map(i=>{ const g=t[i]; return (Number.isInteger(g)&&GODS[g])?g:null; });
@@ -1317,10 +1820,9 @@ async function load(){
 
     /* the forge keeps working while you're gone — Void decides how well */
     recompute();
-    const T = D.tree || {offRate:.5, offCap:8};
     const away = Math.max(0,(Date.now()-(o.ts||Date.now()))/1000);
     if(mktUnlocked()) mktStep(Math.min(Math.floor(away*1000/MKT_TICK), 240));   // the floor kept trading
-    let earned = D.cps * Math.min(away, T.offCap*3600) * T.offRate;
+    let earned = D.cps * Math.min(away, (D.offCap||8)*3600) * (D.offRate||.5);
     if(S.dim.length){                       // they kept drinking in the dark
       const dr=earned*drainFrac(), each=dr/S.dim.length;
       S.dim.forEach(d=>d.s+=each); earned-=dr;
@@ -1338,7 +1840,8 @@ async function load(){
 $('saveBtn').addEventListener('click',()=>save(false));
 $('wipeBtn').addEventListener('click',async()=>{
   if(!confirm('Erase all progress and start over? This cannot be undone.')) return;
-  Object.assign(S,{v:4,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
+  Object.assign(S,{v:5,mute:S.mute,ts:0,dev:false,god:false,chroma:0,total:0,clicks:0,crits:0,motes:0,moteBank:0,bestCps:0,sword:0,owned:[0],
+    totalBase:0,refr:0,shards:0,after:[],refractions:0,btier:[],fingers:[],ach:[],bursts:0,
     forge:new Array(FORGE.length).fill(0),runes:[],frenzyUntil:0,frenzyPow:2,furyUntil:0,furyPow:1,dim:[],
     tree:[null,null,null],treeCd:0,mkt:freshMarket()});
   await Store.wipe();
@@ -1397,15 +1900,21 @@ const Dev = (()=>{
               const bar=document.createElement('div'); bar.className='frenzy'; document.body.appendChild(bar);
               setTimeout(()=>{document.body.classList.remove('frenzied');bar.remove();},60000); },
     mote(){ spawnMote(); toast('Mote spawned'); },
-    open(){ if(S.total<TREE_UNLOCK*1.05){ const n=TREE_UNLOCK*1.05-S.total; S.chroma+=n; S.total+=n; }
+    open(){ if(totalEver()<TREE_UNLOCK*1.05){ const n=TREE_UNLOCK*1.05-totalEver(); S.chroma+=n; S.total+=n; }
             SFX.rune(); toast('Exchange and Prism Tree opened'); },
     shake(){ mktStep(14); toast('The market has been shaken'); },
     motes(){ S.moteBank+=50; SFX.mote(); toast('+50 motes banked'); },
     ember(){ spawnMote('ember'); toast('Ember mote spawned'); },
-    dimmer(){ if(S.total<DIM_UNLOCK){const n=DIM_UNLOCK-S.total;S.chroma+=n;S.total+=n;}
+    dimmer(){ if(totalEver()<DIM_UNLOCK){const n=DIM_UNLOCK-totalEver();S.chroma+=n;S.total+=n;}
               attachDimmer(); },
     gorge(){ const f=Math.max(D.cps*90,1); S.dim.forEach(d=>d.s+=f); paintDimmers();
              toast('Dimmers gorged'); },
+    shards(){ S.shards=(S.shards||0)+250; S.refr=(S.refr||0)+250;
+              S.totalBase=Math.max(S.totalBase||0, Math.pow(S.refr,3)*REFR_BASE);
+              SFX.rune(); toast('+250 prism shards'); },
+    refr(){ const n=shardsReady();
+               if(n<=0){ toast('Nothing to refract — earn more chroma first'); return; }
+               S.refractions=(S.refractions||0)+1; refract(); toast(`Refracted — +${n} shards`); },
     lock(){ S.god=false; S.dev=false; panel.hidden=true; paintFab(); toast('Admin panel locked'); }
   };
   function grant(n){ S.chroma+=n; S.total+=n; SFX.buy(); toast('+'+fmt(n)+' chroma'); }

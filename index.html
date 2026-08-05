@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08040f">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <title>Chromatic Clicker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,6 +45,7 @@
         </div>
         <div class="eyebrow">Record</div>
         <div class="stat"><span>Chroma earned</span><b id="sTotal">0</b></div>
+        <div class="stat" id="rowEver" hidden><span>Chroma lifetime</span><b id="sEver">0</b></div>
         <div class="stat"><span>Orb strikes</span><b id="sClicks">0</b></div>
         <div class="stat"><span>Critical hits</span><b id="sCrits">0</b></div>
         <div class="stat"><span>Fastest clicking</span><b id="sBest">0.0 /s</b></div>
@@ -51,6 +58,10 @@
         <div class="stat" id="rowBank" hidden><span>Motes banked</span><b id="sBank">0</b></div>
         <div class="stat" id="rowMkt" hidden><span>Vault value</span><b id="sMkt">0</b></div>
         <div class="stat" id="rowTree" hidden><span>Prism Tree</span><b id="sTree">0 / 3</b></div>
+        <div class="stat" id="rowRefr" hidden><span>Prism Shards</span><b id="sRefr">0</b></div>
+        <div class="stat" id="rowRmul" hidden><span>Shard bonus</span><b id="sRmul">×1.00</b></div>
+        <div class="stat"><span>Deeds earned</span><b id="sAch">0 / 0</b></div>
+        <div class="stat"><span>Milk</span><b id="sMilk">Clear Light ×1.00</b></div>
       </div>
     </aside>
 
@@ -70,9 +81,9 @@
           <div class="orbwrap" id="orb" role="button" tabindex="0" aria-label="Strike the orb">
             <div class="halo"></div>
             <div class="ring r"></div><div class="ring g"></div><div class="ring b"></div>
-            <img class="orb" id="orbImg" alt="Chromatic orb">
+            <img class="orb" id="orbImg" alt="Chromatic orb" draggable="false">
             <div class="fx" id="fx"></div>
-            <div class="blade" id="blade"><img id="bladeImg" alt=""></div>
+            <div class="blade" id="blade"><img id="bladeImg" alt="" draggable="false"></div>
           </div>
         </div>
       </div>
@@ -87,6 +98,8 @@
           <button class="tab" data-tab="runes">Runes</button>
           <button class="tab" data-tab="market">Market</button>
           <button class="tab" data-tab="tree">Tree</button>
+          <button class="tab" data-tab="prism">Prism</button>
+          <button class="tab" data-tab="deeds">Deeds</button>
         </div>
         <div class="list" id="shop"></div>
       </div>
@@ -137,6 +150,8 @@
       <button class="devbtn" data-dev="ember">Spawn an ember mote</button>
       <button class="devbtn" data-dev="dimmer">Attach a dimmer</button>
       <button class="devbtn" data-dev="gorge">Gorge every dimmer</button>
+      <button class="devbtn" data-dev="shards">+250 prism shards</button>
+      <button class="devbtn" data-dev="refr">Refract now</button>
       <button class="devbtn danger" data-dev="lock">Lock console &amp; turn off cheats</button>
     </div>
     <p class="devnote">Cheats run on your device only. Anything you change here still autosaves, and the stats panel keeps counting honestly.</p>
