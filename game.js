@@ -1,6 +1,24 @@
 /* ================= CHROMATIC CLICKER ================= */
 'use strict';
 
+/* Number formatting lives at the very top on purpose: the achievement list is
+   built at load time and names itself with fmt(), so SUF has to already be
+   initialised by then. Declared any lower it lands in the temporal dead zone
+   and takes the entire script down before a single sprite is painted. */
+/* ================= NUMBER FORMAT ================= */
+const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Dd'];
+function fmt(n){
+  if(!isFinite(n)) return '∞';
+  const sign = n<0 ? '−' : ''; n = Math.abs(n);
+  if(n<1000) return sign + ((n<10 && n%1!==0) ? n.toFixed(1) : Math.floor(n).toLocaleString());
+  let t=0; while(n>=1000 && t<SUF.length-1){n/=1000;t++;}
+  return sign + (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
+}
+function forgeCost(i){
+  return Math.ceil(FORGE[i].cost * Math.pow(1.15, S.forge[i]) * (D.buildCost||1));
+}
+
+
 /* ---- colorize filters applied to the steel blade sprite ---- */
 const F = {
   plain: 'none',
@@ -748,19 +766,6 @@ setInterval(()=>{
   mktStep(1);
   if(tab==='market') paintShop();
 }, MKT_TICK);
-
-/* ================= NUMBER FORMAT ================= */
-const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Dd'];
-function fmt(n){
-  if(!isFinite(n)) return '∞';
-  const sign = n<0 ? '−' : ''; n = Math.abs(n);
-  if(n<1000) return sign + ((n<10 && n%1!==0) ? n.toFixed(1) : Math.floor(n).toLocaleString());
-  let t=0; while(n>=1000 && t<SUF.length-1){n/=1000;t++;}
-  return sign + (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
-}
-function forgeCost(i){
-  return Math.ceil(FORGE[i].cost * Math.pow(1.15, S.forge[i]) * (D.buildCost||1));
-}
 
 /* ================= DOM ================= */
 const $ = id => document.getElementById(id);
