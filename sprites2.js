@@ -1,8 +1,17 @@
 /* Chromatic Clicker — sprites added after the original sprites.js.
-   Kept separate so the big original file never has to be reopened or
-   re-saved. Loads after sprites.js and before game.js. */
 
-const IMG_STARWRATH = "data:image/png;base64," +
+   Everything is assigned onto window instead of declared with const. That is
+   deliberate: a partly-updated sprites.js may already declare some of these,
+   and a duplicate top-level const is a SyntaxError that kills this entire file
+   at parse time — which is exactly what happened before. Assignment never
+   collides. If sprites.js already declared a name, its binding simply wins and
+   the sprite is the same either way. */
+(function(){
+'use strict';
+var A = {};
+
+A.STARWRATH =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAIoAAACiCAYAAACeeFU/AAAEJ0lEQVR42u3dT6hUZRjH8Zm6cFFLFy6CBBVsEde53kRQiEI3CRcU" +
   "7qqF5kotMicF4aIJRgUhFwTjglHcnVC0cVGg0CotAt3ozT/UYqAE3Qkq/sGFjAu3z0O8cMY7Z+bzXT5zzpkzM1+elx/ve95pNtCX" +
   "HFu6pVty/Jf3f2v28n5e8pOAKCAKiAKioK6M+ArqxYH178UvXG50e5mGdBQQBUQBUUAUSD14MYxOTsRpKDuhojSko4AoIAqIAqJA" +
@@ -19,7 +28,8 @@ const IMG_STARWRATH = "data:image/png;base64," +
   "mG4Otd8Oj8/2oGs8JImOAqKAKCAKiILBTD2luxa0F52KL7QoLpfu8NxecSq+n2vx/VycjnfYvjTzb9F9QkcBUUAUEAVEQc1pVpVu" +
   "Fup/arL7z8hW4lnJpqOAKCAKiAKiYEBJ53r6Ld1kFN/Pkqmun11HAVFAFBAFRMEQ8QweL0GoCqD/WQAAAABJRU5ErkJggg==";
 
-const IMG_TITANIUM = "data:image/png;base64," +
+A.TITANIUM =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAFI0lEQVR42u3dX2iVZRwH8LOw3ZQE3VhEmhKYF+padRENb8q2kd0I" +
   "LSIo1lq2ghhGaBhEf4TJQEYQQ+caXYSwSCiKTTQIGRSsVl6pUJp5Ud5EkXjRTd10kez3q/PYe9rO9vlc/nw5Zzt+eXj35Xne01KD" +
   "Bui4q+ePhXjfa3z0LCUCjUCDQINAQ5kWHwH1yFqLNevXhte//N5QQ3+eZ+9+1AqNWw4QaBBoEGi40gofAX+XtRmfHHonvP5C23Xh" +
@@ -40,7 +50,8 @@ const IMG_TITANIUM = "data:image/png;base64," +
   "hXBeVZuRKX3qacaJFSs0CDQINAg0Ag1NLj2xkrUZRydOLqpfQDuBFRqBBoEGgQaBhlqt9g97OarS6L0cYIVGoEGgQaBBoKFWq9Vq" +
   "fwL1PXoy3ZAZgAAAAABJRU5ErkJggg==";
 
-const IMG_TRUEXCAL = "data:image/png;base64," +
+A.TRUEXCAL =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAJwAAACcCAYAAACKuMJNAAAFhUlEQVR42u3df2jUdRzH8bs2uCw2LEmm6XmIi4YjcitiYeUfwnIT" +
   "imIShjJzxNqGzCJbc+2a2ULBtNomxtJZIOHhoMAbWX+slWyL3cBYXqPUHKtd0Q/JyE44rv/j9f7jM27tvufz8eeLL7e724vPlzff" +
   "7/dzfh9y2oKisrTKAwVFTq8TKCzKyPu5iX8J/k8UDhQOFA6gcPAeP19Bbk+j9z7dJ49/8O4Cp9e/a9kCp+Pb21pZ4cApFRQOoHCg" +
@@ -62,13 +73,15 @@ const IMG_TRUEXCAL = "data:image/png;base64," +
   "ZlL811nhQOEACgcKB1A4ZCu/NaVaws362uXx40dkHo8PO12jdN21yWL9zqm1pzF3ArPCgcIBFA4UDqBwyOYpNXRbwOmFXKdRV9b0" +
   "unRxnjz+w4EUUycrHCgcQOFA4QAKB6/5F57we/MqUA5WAAAAAElFTkSuQmCC";
 
-const IMG_CAULDRON = "data:image/png;base64," +
+A.CAULDRON =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAABwAAAAaCAMAAACTisy7AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAhUExURQAAACAg" +
   "IFBQUGBgYICAgEhEQEA4OCkeFbCEYGBEOAAAAN1SvcMAAAALdFJOU/////////////8ASk8B8gAAAAlwSFlzAAAOwwAADsMBx2+o" +
   "ZAAAAG9JREFUKFOVzuEOgCAIRtGCAvX9Hzi/mFHOKd0ftnEaupXaPgjzCBJx7XiKorFnFEEjLMZqnN2dQ8Sz34SYzxPzOfZLHe87" +
   "FyjSsD3oDzozE4lE0Nl+wBcUxcbIlkYQ/M2mK1RNKef+VI3guCmWcgE+aA3NZFue5gAAAABJRU5ErkJggg==";
 
-const IMG_FURNACE = "data:image/gif;base64," +
+A.FURNACE =
+  "data:image/gif;base64," +
   "R0lGODlhLgAiAPeAACsXE5uYdWBgYFlZWXFxcS8vL2trazs6LYuLi4qHZ2NjY3h4eDQZFEtKObGZk4x0bmRMRo6OjoFpYz8zL09P" +
   "T/3dAzMaFDUZEzUZFIGBgUsgFltDPXpjXJqCfJuDfDo5LG9XUXxkXnBYUY11bnFlYVlYRFhLSIFcQltPS11OOT08LnJyclFQPl5c" +
   "R5V9d0gfFUhHN3hgWmdnZ6aOh0w0LltOOXJONpGCYZqamm9vb0VENT8/P0ZGRjAwMJSUlG5fSGFhYWNhSzEaFYc2ITYZE0IcE0wh" +
@@ -103,23 +116,27 @@ const IMG_FURNACE = "data:image/gif;base64," +
   "AQkExKCgwYIDExI8aFDhwiQQI0JEOLCgRIkULSZx4mSOxzkcJxqEyPEjSCcivXjhCAdOwpYcVapk6XIgTCcqAwIAIfkEBQoAgAAs" +
   "CgAMABAABgAACDQAAQkE9KKgwYIDExI8aFDhwiFDoEiEAhHhwIIQJ1IcYlGKFIhXriQMCdGjR5AiB5Ic4jEgADs=";
 
-const IMG_IRONANV = "data:image/png;base64," +
+A.IRONANV =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQBAMAAACFLmBqAAAAElBMVEUAAACup52MgnRtZVlXUUc2MyxxZ9BvAAAAAXRSTlMAQObY" +
   "ZgAAAEhJREFUeNp1yEENwDAQA0FTOAqmYAqmsPypVJVS9ZFknqMXPx0C8CwOexDPuHGbgPYQQJNJQdpioZ4iXQM6LlyDNk4arvE5" +
   "xgO3WCrnEKhAZQAAAABJRU5ErkJggg==";
 
-const IMG_LEADANV = "data:image/png;base64," +
+A.LEADANV =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQBAMAAACFLmBqAAAAElBMVEUAAACXmLNsbpRTVXJDRFwqKjpOAwXIAAAAAXRSTlMAQObY" +
   "ZgAAAEhJREFUeNp1yEENwDAQA0FTOAqmYAqmsPypVJVS9ZFknqMXPx0C8CwOexDPuHGbgPYQQJNJQdpioZ4iXQM6LlyDNk4arvE5" +
   "xgO3WCrnEKhAZQAAAABJRU5ErkJggg==";
 
-const IMG_ALCHTAB = "data:image/png;base64," +
+A.ALCHTAB =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAcCAMAAAA3HE0QAAAANlBMVEUAAACZSSvOdDv//5b/v0k2LCPHm3FUJiGTbFF6Qjs4Ew9q" +
   "TEHl//2lZ1cZCAZtXoC1iLEZGENxsSHIAAAAAXRSTlMAQObYZgAAAKFJREFUeNqdjUEOhSAMBWn1VQT56v0v+wsvJu4EZtHodFLC" +
   "GxF1RN5uJFBdnNVRnQlElgYjkfFAleeZqM4EXDKaCUQYcIqMBbfzfkSVrifg+rrum0odrmh7g/Os8jgo+EXbE/waz0FxnvPc9ASl" +
   "mKVUTwKrA/BJs1L6gs3Z920DzADOZpyeIAQgJYoY4dRZ/1ICQvgOgJytEWPOMXI+BvgM/icEE8H4rJ13AAAAAElFTkSuQmCC";
 
-const IMG_HELLFORGE = "data:image/gif;base64," +
+A.HELLFORGE =
+  "data:image/gif;base64," +
   "R0lGODlhLAAiAPUAABgMDBUVFSsXEy0YFi8YGC4cHDMRETwfFDwfFTolESgoKCsrKzYwJkAbEUEfF0QgE0EgFEohE04oE1YrEVYw" +
   "FmEzEWI3E2M2Fmw+E3w7GUMpKVcjI0s2Il41IGYiIm0+NGdCEX5FKVNTU7wYAoA5H8sSAuE8H8ErK4lGG7RZHr9lHIZLJ5NOI51L" +
   "IJVIP+NPHd9VId5lIo5CQu5mRuaDGumRF++bEeKect+fiQAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAkKADkAIf8LTkVUU0NBUEUy" +
@@ -258,17 +275,20 @@ const IMG_HELLFORGE = "data:image/gif;base64," +
   "SqhAgQFjGmDGhyCGKOKIJH7YYYkopvjhAiB2mJ1VYgBnFRr9sWfIeqe4GMKNyRkSY3T67dgcjcspwOOMJnSoII3qJTdhRhVy8GRG" +
   "UP7hoIAGMunfhlUyMiWVDFrpRW9kGjVmmWgeIUQQADs=";
 
-const IMG_MYTHANV = "data:image/png;base64," +
+A.MYTHANV =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAB4AAAASBAMAAAC+3HPqAAAAHlBMVEUAAADU/76d0pBirYAWd30KVGoLQGINOxwFNkgHGitDmNY5" +
   "AAAAAXRSTlMAQObYZgAAAFJJREFUeNp1zUENwDAMQ1FTKAVTCIVQKIVQMIVSKNtJzXaY0vzbO1iGfgHF5HgjqWLI3U7uEqohyUhT" +
   "qjo3AaDxkoZFqPHyfLNoPP0099376+YHgnZAa8S5YzIAAAAASUVORK5CYII=";
 
-const IMG_ORIANV = "data:image/png;base64," +
+A.ORIANV =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAB4AAAASBAMAAAC+3HPqAAAAJ1BMVEUAAADu4/LbxeTxgfmxgsb5NPOWV7CwIKt2Qow9IExEC0Io" +
   "FDIyBzG6OCxEAAAAAXRSTlMAQObYZgAAAFhJREFUeNp1x0ERwCAMBMBYqIVYqIVYwAIWYiEWsHAWzgKiyqQvJrC/lbERKVfV56eq" +
   "o1wYFn0JC1LqhWQ368yVJ7hD0unAfNsELoe3xb3hfIan4OWciad/R21e1fhQK/kAAAAASUVORK5CYII=";
 
-const IMG_ADAMFORGE = "data:image/gif;base64," +
+A.ADAMFORGE =
+  "data:image/gif;base64," +
   "R0lGODlhMAAiANUtADFIS8laNS1BQy4AAcDa4WAvMsrcv1Gcp3RCQsqENN5tRFwoK8Xb4kdshEtthcnJNcfVt9/vzt7cRPWhTpJJ" +
   "SfTnTt6XRH42OcXCLfb62cVTLYtNTMZ9LPR4TlxlZXovMkVbW01GRl4ICjtug/RER7Xc4K0UFzIyMtIZHIkQEuHg4MLCwiAgIP//" +
   "/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh" +
@@ -289,7 +309,8 @@ const IMG_ADAMFORGE = "data:image/gif;base64," +
   "SCSJhEYzLtLJdnh6fAFsQndCGBhHTkeILYqMIEIWFg8PQpd5TZMtlZeZD5stTkEAIfkEBQcALQAsEAAOAA4ADAAABjPAlnAYCAyP" +
   "yCISCWgCPJ6l0PmMDkGgprDTmQIEAqy2xfWCx9IWNe1lu99CgyE+l8rpxyAAOw==";
 
-const IMG_TITFORGE = "data:image/gif;base64," +
+A.TITFORGE =
+  "data:image/gif;base64," +
   "R0lGODlhMAAiANUoADFIS2qLlclaNajSsy1BQ4t8uGAvMsrcv3RCQt5tRMqENFwoK8nJNcfVt9/vzpJJSfWhTt7cRPTnTt6XRH42" +
   "OcXCLfb62cVTLfR4TsZ9LItNTFxlZXovMmFxhEVbW9T//1xaZR09SDEvRHJwfEhGT/HP9MC93R8cLv///wAAAAAAAAAAAAAAAAAA" +
   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh" +
@@ -310,19 +331,22 @@ const IMG_TITFORGE = "data:image/gif;base64," +
   "0sl2eHp8AmxCd0IVFUdOR4goioweQhMTDAxCl3lNkyiVl5kMmyhOQQAh+QQFBwAoACwQAA4ADgAMAAAGM0CUcCgQDI/IIhIJaAI2" +
   "m6XQ+YwOPZ6mEIOZAggErBbF9YLHUhQ17WW738LDIT6XyunHIAA7";
 
-const IMG_EMBERKILN = "data:image/png;base64," +
+A.EMBERKILN =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAABgAAAAcBAMAAACJyGLdAAAAMFBMVEUAAAAjKSxKUlXBysuera793QPu9Pb///+BRjZxe3//yAO4" +
   "OhhbY2b9PgP9WwP9fwMwDGTEAAAAAXRSTlMAQObYZgAAAH9JREFUeNpt0EEVwCAIgGEqUIEKVKACFaiwClagghVWYRWsYAWHuoNP" +
   "9x/0fTcAAABHMFuBwmzGeADZOi7DDUjEFJk7bnCnHJHIDiHVqk2JD6SqWYumH5SWays/kHRHieWAXyPfEZPGcsxCY58VfYned4MF" +
   "+Dz9UvEemPeb34IXGOlaLw0MhB0AAAAASUVORK5CYII=";
 
-const IMG_CRYOPRESS = "data:image/png;base64," +
+A.CRYOPRESS =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAaBAMAAABSj/GHAAAAKlBMVEUAAAAQEx4Ah5kvN00pKSkyQGM9T3oA2PVacaZ0dHR86feL" +
   "n84hJjYAv9l8BlgkAAAAAXRSTlMAQObYZgAAAHlJREFUeNqdz2ENxDAIBWAsPAtYwAIWngUszEIt1EItzMIsnJdj67IlXS+X7P3i" +
   "I4UUEQdc9pzFYK+BevQrIovR6rze0/XpRkgP2CZe7LL98/LGVPQoJxa1ttmRjyUfFoBRyloCffHovCMisnHfNdjIHIlflvM/MvEX" +
   "3khBWTc+CtEAAAAASUVORK5CYII=";
 
-const IMG_ANCMANIP = "data:image/png;base64," +
+A.ANCMANIP =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAkCAYAAACe0YppAAAD/ElEQVR4AcXBb0zUdQDH8ffvt9v0CW3ZbJQ5mHfAg9OlUypKFGlC" +
   "64rmliitB4LOZahbD+zPSrIRa601B2IZK84H5R96IEMP4241Ew1R6Al/1iF348afDsjrga65Vvv2++C1ne5qPvu9Xvwr4PeZgN9n" +
   "SAv4fSbg9xnSZpNxM5uMG9ICfp8J+H2GtNlk3Mwm44a0gN9nAn6fIS3g95mA32dIs3GJFfD7DI7ysmLk1YNNyIe79yD5y5cgJTVb" +
@@ -339,14 +363,16 @@ const IMG_ANCMANIP = "data:image/png;base64," +
   "kOmpYSQxNYeMjk4gkXAvcvpUEJmeGkbOh68ikXAvsrmiFNlVV4dMTw0jiak5ZHR0ArFxiVVYkGu4D2PXkxaOwoJcQxZj15MWjsKC" +
   "XMN9sHHJPy75afxUafQzAAAAAElFTkSuQmCC";
 
-const IMG_DRAEDON = "data:image/png;base64," +
+A.DRAEDON =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAADoAAAAgBAMAAACx2HbmAAAAJ1BMVEUBAQH5/2//xEGuu8OYoqxRnuzsaixye4nFQEBQWWY2OkEj" +
   "JSYAAAAB9JsQAAAAAXRSTlMAQObYZgAAANlJREFUeNqNykGtBDEMA9BSKIVQGAqhsBRKIRSGgimYgikY1Fdm9A+rPbRWpcZ5Gf+5" +
   "7/tnGkd6x5zSGP00Z9ynSkZIgoZSQ5AUQZ4o1yI/IqTMlEB92Mu9aq22xsrMam5fS3sFqoq2Ctd1oWSzqoCtqnrygyWpHjZ6ra2S" +
   "dtndllZfP53cq9H6lJAUff4ofKQJEAqttRQCgTxSAa1QRMw5I0JoBbTTMezMStpWxzazMu0xNtqcmaSNNzaZmR57bW4pu6D3g+1x" +
   "pAarSqrKzHcowmdqW9+xvdc/5Ji9QCDBcLYAAAAASUVORK5CYII=";
 
-const IMG_BOTANIC = "data:image/png;base64," +
+A.BOTANIC =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAACQAAAAmCAYAAACsyDmTAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAGdYA" +
   "ABnWARjRyu0AAAG5SURBVFhH3ZSxSgQxEIb3WeQKbQQbi20tdRELCx9Bwe0EfQQtrQRB8AHOd0hhc1aWYmdhY32VxUmG+fB2Ysjt" +
   "xcOsA3+xf2b+fLm9bJVbdV3PfkMal18/hS8jjcsvAtu2Fd2NH0Ru8tQR/sHFZUf/H2i0Npp5EdxXzGtcfq0cyA6onSyCeXXOvCp8" +
@@ -356,7 +382,8 @@ const IMG_BOTANIC = "data:image/png;base64," +
   "2gIdT946igHZg6X84QHx09LApx0wQPA5ABsw19dXjO8qFsg2cu0BQFxXDsA8c4v6un1YNBQDxABSO/CRLkfXF5XGhBVrtD7S5RUB" +
   "VdUXEQf/Qa9UX8sAAAAASUVORK5CYII=";
 
-const IMG_VOIDCRUC = "data:image/png;base64," +
+A.VOIDCRUC =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAACYAAAAmCAMAAACf4xmcAAAAP1BMVEUAAAAWEgsbEgIaGhovIAEpJBoUKEBAKwE6OjpWOgEmTZdN" +
   "TE0pVq16UgItYcZmZ2dIfZWebg+AgIBXoMHI9f1z1BNWAAAAAXRSTlMAQObYZgAAAPVJREFUeNqdkuGSgyAMBjVRY0opePr+z3p8" +
   "pljs3Tjg/hLYcTXadSfooLuiSiMSUfUJ1QvxUisjRMPOZ32cVWlEyCwLFjm6LN7bGlf7AzRoOLLMOUoEqU1DSKSMel+u9+tKzUJ5" +
@@ -364,13 +391,15 @@ const IMG_VOIDCRUC = "data:image/png;base64," +
   "7J9ohebeiMT4TDwe63pfw+fGxjwjGyMk7Nhem2YiRmwiMCmEQqrU+n4cLYzXsB8zj4h5HPv+nnZW7PFbNYh4jf+ws2rtF0wNJVki" +
   "MEC1AAAAAElFTkSuQmCC";
 
-const IMG_COSMICANV = "data:image/png;base64," +
+A.COSMICANV =
+  "data:image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeBAMAAADJHrORAAAALVBMVEU6IR0AAADZ7NnTvbKxvr7RpdCiiFlch6mTaFdaWIdoVlRl" +
   "QTtWNkw6OV1FAVtF+o4aAAAAAnRSTlP/AOW3MEoAAACiSURBVHjaZcpBEcRQCAPQWMBCLWDhW6gFLGABC7FQC7HwLWBhNWy7l50p" +
   "kBzeTGCy/8nwNlxmVU9MjukQ5LK7UGBaUTefcYWmDeo2sq1bsGFE54drZX+yA8OGZJ/HsbKZsGF4ofNcmY1yDJsQzcxkB2TDAMub" +
   "ZHsRmK7w2jy5y6OmDXuzzyPBvWHTcubF5JV0TctjoXDdXeEaBrANv98A3v4CRFmlW99QKukAAAAASUVORK5CYII=";
 
-const IMG_GROUND = "data:image/webp;base64," +
+A.GROUND =
+  "data:image/webp;base64," +
   "UklGRpovAABXRUJQVlA4TI4vAAAv88F8AGfjNrZtVdn/4+4QufRAEdYpVf0hciJ/G2nCbWzbqrK/G0SeEjqNUAA9URTtkLpztxvJ" +
   "tk1rPX+ktj3//M/kR8xsrPmvw5ziDTWLbG75r9juf3bXi+Qf2Ktwfop2R/1lSWPadzu0IEQogf6JFCr5Q4gKZcEpXaoMQnm7Href" +
   "9CNTY+M5j8Svlmq/oPI/eg/eWrGGUqlUIpVKJVCJUCKFyk+sUOZFSeB6+lOJVKB3/IkQIhVIJVBNnEg+dc9vA4EAEAIEQhCJAAhE" +
@@ -535,22 +564,29 @@ const IMG_GROUND = "data:image/webp;base64," +
   "YlHtWKm3oZ65uh36gsqAvdaiYWfN5tpnrJ6/rlNS6B2GDCVWYZKQaoNpD9YfVbGodqzU01DPXN0OfUFlwF5r0bCzZnPtM1bPX9dB" +
   "FepU+Ku5XWvt164s9fzlnE3COw3Zrpp7cchu/D8GnHcgSdmunjX2a9dfBpg=";
 
-const FORGE_ART = [
-  {img:IMG_CAULDRON, w:28, h:26},
-  {img:IMG_FURNACE, w:46, h:34},
-  {img:IMG_IRONANV, w:32, h:16},
-  {img:IMG_LEADANV, w:32, h:16},
-  {img:IMG_ALCHTAB, w:32, h:28},
-  {img:IMG_HELLFORGE, w:44, h:34},
-  {img:IMG_MYTHANV, w:30, h:18},
-  {img:IMG_ORIANV, w:30, h:18},
-  {img:IMG_ADAMFORGE, w:48, h:34},
-  {img:IMG_TITFORGE, w:48, h:34},
-  {img:IMG_EMBERKILN, w:24, h:28},
-  {img:IMG_CRYOPRESS, w:30, h:26},
-  {img:IMG_ANCMANIP, w:30, h:36},
-  {img:IMG_DRAEDON, w:58, h:32},
-  {img:IMG_BOTANIC, w:36, h:38},
-  {img:IMG_VOIDCRUC, w:38, h:38},
-  {img:IMG_COSMICANV, w:30, h:30},
+
+/* Only fill in what is genuinely absent, so an already-loaded sprite is never
+   clobbered by this file. */
+for (var k in A) { if (typeof window['IMG_'+k] === 'undefined') window['IMG_'+k] = A[k]; }
+
+if (typeof window.FORGE_ART === 'undefined') window.FORGE_ART = [
+  {img:A.CAULDRON, w:28, h:26},
+  {img:A.FURNACE, w:46, h:34},
+  {img:A.IRONANV, w:32, h:16},
+  {img:A.LEADANV, w:32, h:16},
+  {img:A.ALCHTAB, w:32, h:28},
+  {img:A.HELLFORGE, w:44, h:34},
+  {img:A.MYTHANV, w:30, h:18},
+  {img:A.ORIANV, w:30, h:18},
+  {img:A.ADAMFORGE, w:48, h:34},
+  {img:A.TITFORGE, w:48, h:34},
+  {img:A.EMBERKILN, w:24, h:28},
+  {img:A.CRYOPRESS, w:30, h:26},
+  {img:A.ANCMANIP, w:30, h:36},
+  {img:A.DRAEDON, w:58, h:32},
+  {img:A.BOTANIC, w:36, h:38},
+  {img:A.VOIDCRUC, w:38, h:38},
+  {img:A.COSMICANV, w:30, h:30},
 ];
+
+})();
