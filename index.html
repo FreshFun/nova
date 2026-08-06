@@ -160,5 +160,9 @@
 <div class="toasts" id="toasts"></div>
 <script src="sprites.js" defer></script>
   <script src="game.js" defer></script>
+  <!-- co-op: PeerJS must be defined before coop.js runs, and deferred scripts
+       execute in document order, so this pair stays in this order. -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+  <script src="coop.js" defer></script>
 </body>
 </html>
