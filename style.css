@@ -701,3 +701,57 @@ body.combo .halo{animation:breathe 1.1s ease-in-out infinite;
   color:var(--gold);border:1px dashed var(--gold);background:rgba(255,209,102,.07);
   user-select:all;-webkit-user-select:all}
 @media(max-width:560px){.coopsplit{grid-template-columns:1fr}}
+
+/* ============ THE GROUNDS ============ */
+/* The backdrop is a 500px pixel-art square anchored to its grass line, tiled
+   sideways so it fills any width without ever stretching the pixels. */
+.grounds{position:relative;margin-top:14px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--ridge);
+  height:clamp(180px,30vh,300px);
+  background-repeat:repeat-x;background-position:center bottom;background-size:auto 100%;
+  image-rendering:pixelated;-ms-interpolation-mode:nearest-neighbor}
+/* a touch of the page's own darkness over the top so the sky doesn't fight the UI */
+.grounds::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(8,4,15,.55) 0%,rgba(8,4,15,0) 42%)}
+
+.gscene{position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:flex-end;gap:2px;padding:8px 10px 6px;
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.gscene::-webkit-scrollbar{width:5px}
+.gscene::-webkit-scrollbar-thumb{background:rgba(255,79,216,.35);border-radius:3px}
+
+.growrow{position:relative;display:flex;align-items:flex-end;flex:0 0 auto;
+  min-height:var(--h);padding-right:52px}
+.growrow img{display:block;image-rendering:pixelated;flex:0 0 auto;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
+/* the name only shows on hover so the valley stays a picture, not a table */
+.gname{position:absolute;left:0;bottom:100%;white-space:nowrap;
+  font-size:9.5px;letter-spacing:.06em;color:var(--text);
+  background:rgba(8,4,15,.82);border:1px solid var(--ridge);
+  padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .14s;pointer-events:none}
+.growrow:hover .gname{opacity:1}
+.gmore{position:absolute;right:6px;bottom:2px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);
+  background:rgba(8,4,15,.75);border:1px solid rgba(255,209,102,.4);
+  padding:1px 5px;border-radius:5px}
+
+.gempty{position:absolute;inset:auto 0 0 0;padding:14px 12px;text-align:center;
+  font-size:10.5px;letter-spacing:.06em;color:var(--muted);
+  background:linear-gradient(180deg,rgba(8,4,15,0),rgba(8,4,15,.8))}
+
+/* forge sprites reused as shop-row icons */
+.ico.art{display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ico.art img{max-width:82%;max-height:82%;width:auto;height:auto;
+  image-rendering:pixelated;display:block}
+
+@media(max-width:520px){
+  .grounds{height:clamp(150px,24vh,220px)}
+  .gname{font-size:9px}
+}
+
+/* ---- locked forge buildings, shown as silhouettes ---- */
+.ico.locked img{filter:brightness(0) saturate(0);opacity:.32}
+.ico.locked .glyph{opacity:.4}
+.mystery{font-family:'JetBrains Mono',monospace;letter-spacing:.22em;color:var(--muted)}
+.mystery-row{opacity:.62}
+.mystery-row:hover{opacity:.78}

@@ -50,73 +50,107 @@ const SWORDS = [
   {n:'Cobalt Sword',      img:IMG_PURPLE,   px:true, fil:F.noct,  cost:45e9,   pow:6e6,   col:'#b06bff', d:'Sharpest in the hour before dawn.', all:70, forge:100, crit:8, critdmg:4},
   {n:'Mythril Sword',     img:IMG_MYTHRIL,  px:true, fil:F.myth,  cost:3e12,   pow:1.2e8, col:'#a8c0e8', d:'Lighter than air, heavier than consequence.', crit:10, forge:150},
   {n:"True Night's Edge", img:IMG_TNE,      px:true, fil:F.tne,   cost:250e12, pow:3e9,   col:'#7dff5c', d:'Every blade that came before it, fused into one.', all:120, critdmg:6},
-  {n:'Star Wrath',             img:IMG_STARWRATH, px:true, fil:F.star, cost:3e15, pow:1.45e10, col:'#ff4fd8', d:'Pulled down out of the sky, still falling.',
+  {n:'Star Wrath',             img:IMG_STARWRATH, px:true, fil:F.star, cost:6.0e15, pow:1.45e10, col:'#ff4fd8', d:'Pulled down out of the sky, still falling.',
    all:38, critdmg:3, sfx:'starwrath'},
-  {n:'Terra Blade',            img:IMG_TERRA,    px:true, fil:F.terra,  cost:4e16, pow:7e10,  col:'#7ee860', d:'Every blade you ever owned, remembered at once.',
+  {n:'Terra Blade',            img:IMG_TERRA,    px:true, fil:F.terra,  cost:1.44e17, pow:7e10,  col:'#7ee860', d:'Every blade you ever owned, remembered at once.',
    all:40, crit:6, sfx:'terra'},
-  {n:'Volcano',                img:IMG_VOLCANO,  px:true, fil:F.volc,   cost:4e18,   pow:1.6e12, col:'#ff8c28', d:'The blade is the eruption. The handle is an afterthought.',
+  {n:'Volcano',                img:IMG_VOLCANO,  px:true, fil:F.volc,   cost:3.46e18,   pow:1.6e12, col:'#ff8c28', d:'The blade is the eruption. The handle is an afterthought.',
    forge:45, critdmg:3, sfx:'fire'},
-  {n:'Titanium Sword',         img:IMG_TITANIUM, px:true, fil:F.titan,  cost:1.7e19,  pow:4.6e12, col:'#b9c2f5', d:'Does not bend, does not dull, does not care.',
+  {n:'Titanium Sword',         img:IMG_TITANIUM, px:true, fil:F.titan,  cost:8.3e19,  pow:4.6e12, col:'#b9c2f5', d:'Does not bend, does not dull, does not care.',
    forge:50, crit:5, sfx:'titanium'},
-  {n:'True Excalibur',         img:IMG_TRUEXCAL, px:true, fil:F.tex,    cost:7e19,    pow:1.3e13, col:'#ffd98a', d:'The one the stories were actually about.',
+  {n:'True Excalibur',         img:IMG_TRUEXCAL, px:true, fil:F.tex,    cost:2.0e21,    pow:1.3e13, col:'#ffd98a', d:'The one the stories were actually about.',
    all:50, critdmg:4, sfx:'mythic'},
-  {n:"Hell's Judgement",       img:IMG_HELL,     px:true, fil:F.hell,   cost:3e20,   pow:3.8e13, col:'#d62030', d:'Sentence first. Trial never.',
+  {n:"Hell's Judgement",       img:IMG_HELL,     px:true, fil:F.hell,   cost:4.8e22,   pow:3.8e13, col:'#d62030', d:'Sentence first. Trial never.',
    all:45, crit:6, sfx:'hell'},
-  {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:1.6e22,   pow:9e14,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
+  {n:'Murasama',               img:IMG_MURASAMA, px:true, fil:F.mura,   cost:1.15e24,   pow:9e14,  col:'#ff2e4d', d:'Never sheathed. The arcs along the edge never stop.',
    forge:55, crit:8, critdmg:4, sfx:'electric', tall:true, big:true, flip:true, tilt:-18},
-  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:2e24,   pow:2.2e16, col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
+  {n:'Iridescent Excalibur',   img:IMG_EXCAL,    px:true, fil:F.excal,  cost:2.75e25,   pow:2.2e16, col:'#9cc8ff', d:'Drawn from the stone, then from the sky.',
    all:60, critdmg:5, sfx:'holy'},
-  {n:'Prismatic Blade',        img:IMG_CHROMA,   px:true, fil:F.chroma, cost:5e25, pow:1.1e17, col:'#c08cff', d:'The whole spectrum, folded into one curve.',
+  {n:'Prismatic Blade',        img:IMG_CHROMA,   px:true, fil:F.chroma, cost:6.6e26, pow:1.1e17, col:'#c08cff', d:'The whole spectrum, folded into one curve.',
    all:65, crit:8, sfx:'chroma', tall:true, big:true, tilt:-16},
-  {n:'Exoblade',               img:IMG_EXO,      px:true, fil:F.exo,    cost:3e26,   pow:6e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
+  {n:'Exoblade',               img:IMG_EXO,      px:true, fil:F.exo,    cost:1.6e28,   pow:6e17, col:'#78ffec', d:'Forged outside the universe, brought in through a crack.',
    all:75, forge:75, sfx:'cosmic'},
-  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:1.4e28,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
+  {n:'B E H O L D',            img:IMG_BEHOLD,   px:true, fil:F.behold, cost:3.8e29,   pow:1.4e19, col:'#ff78ff', d:'There is nothing after this one.',
    all:120, forge:120, crit:10, critdmg:8, sfx:'behold', big:true}
 ];
 const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX'];
 
 /* ---- FORGE: idle chroma per second ---- */
 const FORGE = [
-  {n:'Constant-Click',   g:'/',  cost:30,     cps:.3,    d:'Clicks the orb for you, forever. The cheapest way to earn without touching the screen.'},
-  {n:'Apprentice Smith', g:'#',  cost:320,    cps:3,     d:'Automatic income. Each one earns about 10x a Constant-Click.'},
-  {n:'Prism Anvil',      g:'◆',  cost:4200,   cps:26,    d:'Automatic income. Each one earns about 9x an apprentice smith.'},
-  {n:'Rune Furnace',     g:'✦',  cost:55e3,   cps:190,   d:'Automatic income. Each one earns about 7x a prism anvil.'},
-  {n:'Astral Kiln',      g:'◈',  cost:750e3,  cps:1500,  d:'Automatic income. Each one earns about 8x a rune furnace.'},
-  {n:'Chroma Reactor',   g:'⬡',  cost:11e6,   cps:12e3,  d:'Automatic income. Each one earns about 8x an astral kiln.'},
-  {n:'Starforge',        g:'✷',  cost:180e6,  cps:105e3, d:'Automatic income. Each one earns about 9x a chroma reactor.'},
-  {n:'Singularity Anvil',g:'●',  cost:3.4e9,  cps:900e3, d:'Automatic income. Each one earns about 9x a starforge.'},
-  {n:'Spectrum Loom',    g:'▤',  cost:75e9,   cps:8.2e6, d:'Automatic income. Each one earns about 9x a singularity anvil.'},
-  {n:'The First Colour', g:'✧',  cost:1.6e12, cps:78e6,  d:'Automatic income. Each one earns about 9x a spectrum loom.'},
-  {n:'Chromasmith Choir',g:'♫',  cost:4e13,   cps:800e6, d:'Automatic income. Each one earns about 10x the first colour.'},
-  {n:'Nova Crucible',    g:'✺',  cost:2e15,   cps:1.6e10,d:'Automatic income. Each one earns about 20x a chromasmith choir.'},
-  {n:'Continuum Press',  g:'⧉',  cost:1e17,   cps:350e9, d:'Automatic income. Each one earns about 22x a nova crucible.'},
-  {n:'The Unmade Anvil', g:'◉',  cost:6e18,   cps:8.5e12,d:'Automatic income. Each one earns about 24x a continuum press.'},
-  {n:'Godspring',        g:'✵',  cost:4e20,   cps:240e12,d:'Automatic income. Each one earns about 28x the unmade anvil.'},
-  {n:'Aleph Kiln',       g:'⟁',  cost:3e22,   cps:7.5e15,d:'Automatic income. Each one earns about 31x a godspring.'},
-  {n:'The Long Noon',    g:'☀',  cost:2.5e24, cps:2.6e17,d:'Automatic income. The strongest earner in the forge.'}
+  {n:'Cauldron',            g:'◍',  cost:30,      cps:.3,       d:'Bubbles away on its own, forever. The cheapest way to earn without touching the orb.'},
+  {n:'Furnace',             g:'▥',  cost:320,     cps:3,        d:'Automatic income. Each one earns about 10x a cauldron.'},
+  {n:'Iron Anvil',          g:'⌂',  cost:4200,    cps:26,       d:'Automatic income. Each one earns about 9x a furnace.'},
+  {n:'Lead Anvil',          g:'⌂',  cost:55e3,    cps:190,      d:'Automatic income. Each one earns about 7x an iron anvil.'},
+  {n:'Alchemy Table',       g:'⚗',  cost:750e3,   cps:1500,     d:'Automatic income. Each one earns about 8x a lead anvil.'},
+  {n:'Hellforge',           g:'♨',  cost:11e6,    cps:12e3,     d:'Automatic income. Each one earns about 8x an alchemy table.'},
+  {n:'Mythril Anvil',       g:'◆',  cost:180e6,   cps:105e3,    d:'Automatic income. Each one earns about 9x a hellforge.'},
+  {n:'Orichalcum Anvil',    g:'◈',  cost:3.4e9,   cps:900e3,    d:'Automatic income. Each one earns about 9x a mythril anvil.'},
+  {n:'Adamantite Forge',    g:'✦',  cost:75e9,    cps:8.2e6,    d:'Automatic income. Each one earns about 9x an orichalcum anvil.'},
+  {n:'Titanium Forge',      g:'✧',  cost:1.6e12,  cps:78e6,     d:'Automatic income. Each one earns about 9x an adamantite forge.'},
+  {n:'Ember Kiln',          g:'✷',  cost:4e13,    cps:800e6,    d:'Automatic income. Each one earns about 10x a titanium forge.'},
+  {n:'Cryonic Press',       g:'❄',  cost:2e15,    cps:1.6e10,   d:'Automatic income. Each one earns about 20x an ember kiln.'},
+  {n:'Ancient Manipulator', g:'⬡',  cost:1e17,    cps:350e9,    d:'Automatic income. Each one earns about 22x a cryonic press.'},
+  {n:'Draedon\'s Forge',    g:'⧉',  cost:6e18,    cps:8.5e12,   d:'Automatic income. Each one earns about 24x an ancient manipulator.'},
+  {n:'Botanic Extractor',   g:'❦',  cost:4e20,    cps:240e12,   d:'Automatic income. Each one earns about 28x a Draedon’s forge.'},
+  {n:'Voidsight Crucible',  g:'◉',  cost:3e22,    cps:7.5e15,   d:'Automatic income. Each one earns about 31x a botanic extractor.'},
+  {n:'Cosmic Anvil',        g:'✵',  cost:2.5e24,  cps:2.6e17,   d:'Automatic income. The strongest earner in the forge.'},
 ];
 
 /* ---- RUNES: one-time upgrades ---- */
 const RUNES = [
-  {n:'Honing Oil',         cost:800,    tag:'Clicks',     d:'Doubles the chroma you get from every orb click.',                       f:s=>s.clickMult*=2},
-  {n:'Bellows',            cost:5e3,    tag:'Forge',      d:'Doubles everything your forge earns per second.',                        f:s=>s.forgeMult*=2},
-  {n:'Rune Etching',       cost:30e3,   tag:'Clicks',     d:'Doubles click chroma a second time, on top of Honing Oil.',              f:s=>s.clickMult*=2},
-  {n:'Focused Strikes',    cost:120e3,  tag:'Crits',      d:'Adds 6% crit chance. A crit multiplies that single click.',              f:s=>s.crit+=6},
-  {n:'Ley Conduit',        cost:600e3,  tag:'Forge',      d:'Multiplies forge income by 2.5.',                                        f:s=>s.forgeMult*=2.5},
-  {n:'Prism Lens',         cost:3e6,    tag:'Clicks',     d:'Triples the chroma you get from every click.',                           f:s=>s.clickMult*=3},
-  {n:"Executioner's Edge", cost:14e6,   tag:'Crits',      d:'Crits hit 3x harder, added to your current crit power.',                 f:s=>s.critDmg+=3},
-  {n:'Chromatic Attunement',cost:90e6,  tag:'Everything', d:'Multiplies all chroma by 1.6 — clicks and forge together.',              f:s=>s.allMult*=1.6},
-  {n:'Starlight Quench',   cost:700e6,  tag:'Forge',      d:'Triples forge income.',                                                  f:s=>s.forgeMult*=3},
-  {n:'Resonant Core',      cost:5e9,    tag:'Clicks',     d:'Quadruples the chroma you get from every click.',                        f:s=>s.clickMult*=4},
-  {n:'Absolute Focus',     cost:40e9,   tag:'Crits',      d:'Adds 10% crit chance.',                                                  f:s=>s.crit+=10},
-  {n:'Mote Magnetism',     cost:300e9,  tag:'Motes',      d:'Halves the 5-15 minute wait between prism motes.',          f:s=>s.moteRate=.5},
-  {n:'Spectrum Overdrive', cost:4e12,   tag:'Everything', d:'Multiplies all chroma by 2.5 — clicks and forge together.',              f:s=>s.allMult*=2.5},
-  {n:'The Last Wavelength',cost:60e12,  tag:'Everything', d:'Multiplies all chroma by 3 and adds 3x to crit power.',                  f:s=>{s.allMult*=3;s.critDmg+=3}},
-  {n:'Prism Cascade',      cost:900e12, tag:'Everything', d:'Multiplies all chroma by 2.',                                            f:s=>s.allMult*=2},
-  {n:'Ninefold Edge',      cost:9e16,   tag:'Clicks',     d:'Multiplies click chroma by 3.',                                          f:s=>s.clickMult*=3},
-  {n:'Eternal Bellows',    cost:8e18,   tag:'Forge',      d:'Multiplies forge income by 3.',                                          f:s=>s.forgeMult*=3},
-  {n:'The Final Colour',   cost:6e20,   tag:'Everything', d:'Multiplies all chroma by 2.5 and adds 4x to crit power.',                f:s=>{s.allMult*=2.5;s.critDmg+=4}}
+  {n:'Honing Oil',          cost:800,    tag:'Clicks',     d:'Doubles the chroma you get from every orb click.',                 f:s=>s.clickMult*=2},
+  {n:'Bellows',             cost:5e3,    tag:'Forge',      d:'Doubles everything your forge earns per second.',                  f:s=>s.forgeMult*=2},
+  {n:'Rune Etching',        cost:30e3,   tag:'Clicks',     d:'Doubles click chroma a second time, on top of Honing Oil.',        f:s=>s.clickMult*=2},
+
+  /* ---- fork A: sharpen the strike, or feed the fire ---- */
+  {n:'Tempered Draft',        cost:120e3,    tag:'Forge',      fork:'A',
+   d:'Multiplies forge income by 1.9.',                                                         f:s=>s.forgeMult*=1.9},
+  {n:'Focused Strikes',       cost:120e3,    tag:'Everything', fork:'A',
+   d:'Multiplies all chroma by 1.75 and adds 8% crit chance.',                                  f:s=>{s.allMult*=1.75;s.crit+=8}},
+
+  {n:'Ley Conduit',         cost:600e3,  tag:'Forge',      d:'Multiplies forge income by 2.5.',                                  f:s=>s.forgeMult*=2.5},
+  {n:'Prism Lens',          cost:3e6,    tag:'Clicks',     d:'Triples the chroma you get from every click.',                     f:s=>s.clickMult*=3},
+
+  /* ---- fork B ---- */
+  {n:'Even Burn',             cost:14e6,     tag:'Forge',      fork:'B',
+   d:'Multiplies forge income by 2.3.',                                                         f:s=>s.forgeMult*=2.3},
+  {n:'Executioner\'s Edge',   cost:14e6,     tag:'Everything', fork:'B',
+   d:'Multiplies all chroma by 2.1 and crits hit 4x harder.',                                   f:s=>{s.allMult*=2.1;s.critDmg+=4}},
+
+  {n:'Chromatic Attunement',cost:90e6,   tag:'Everything', d:'Multiplies all chroma by 1.6 — clicks and forge together.',        f:s=>s.allMult*=1.6},
+
+  /* ---- fork C: the big one, click path or forge path ---- */
+  {n:'Starlight Quench',      cost:700e6,    tag:'Forge',      fork:'C',
+   d:'Triples forge income.',                                                                   f:s=>s.forgeMult*=3},
+  {n:'Resonant Core',         cost:700e6,    tag:'Everything', fork:'C',
+   d:'Multiplies all chroma by 2.7 and every strike drags 0.08s of forge output with it.',      f:s=>{s.allMult*=2.7;s.tap+=.08}},
+
+  {n:'Absolute Focus',      cost:40e9,   tag:'Crits',      d:'Adds 10% crit chance.',                                            f:s=>s.crit+=10},
+  {n:'Mote Magnetism',      cost:300e9,  tag:'Motes',      d:'Halves the 5-15 minute wait between prism motes.',                 f:s=>s.moteRate=.5},
+
+  /* ---- fork D ---- */
+  {n:'Spectrum Overdrive',    cost:4e12,     tag:'Everything', fork:'D',
+   d:'Multiplies all chroma by 2.5.',                                                           f:s=>s.allMult*=2.5},
+  {n:'Ninefold Edge',         cost:4e12,     tag:'Forge',      fork:'D',
+   d:'Multiplies forge income by 2.8 and adds 6% crit chance.',                                 f:s=>{s.forgeMult*=2.8;s.crit+=6}},
+
+  /* ---- fork E ---- */
+  {n:'The Last Wavelength',   cost:60e12,    tag:'Everything', fork:'E',
+   d:'Multiplies all chroma by 3 and adds 3x to crit power.',                                   f:s=>{s.allMult*=3;s.critDmg+=3}},
+  {n:'Kiln Eternal',          cost:60e12,    tag:'Forge',      fork:'E',
+   d:'Multiplies forge income by 3.4 and every strike drags 0.12s of forge output with it.',    f:s=>{s.forgeMult*=3.4;s.tap+=.12}},
+
+  {n:'Prism Cascade',       cost:900e12, tag:'Everything', d:'Multiplies all chroma by 2.',                                      f:s=>s.allMult*=2},
+  {n:'Eternal Bellows',     cost:8e18,   tag:'Forge',      d:'Multiplies forge income by 3.',                                    f:s=>s.forgeMult*=3},
+  {n:'The Final Colour',    cost:6e20,   tag:'Everything', d:'Multiplies all chroma by 2.5 and adds 4x to crit power.',          f:s=>{s.allMult*=2.5;s.critDmg+=4}}
 ];
+/* Runes sharing a fork letter are mutually exclusive — binding one closes the
+   other until the next refraction. RUNE_SLOTS is how many you can actually hold,
+   which is not RUNES.length any more. */
+const FORKS = [...new Set(RUNES.filter(r=>r.fork).map(r=>r.fork))];
+const RUNE_SLOTS = RUNES.filter(r=>!r.fork).length + FORKS.length;
+const forkTaken = k => S.runes.some(i=>RUNES[i].fork===k);
+const forkPartner = i => RUNES.findIndex((r,j)=>j!==i && r.fork && r.fork===RUNES[i].fork);
 
 /* ================= BUILDING TIERS =================
    The thing that makes Cookie Clicker's shop never empty: every building has its
@@ -325,7 +359,7 @@ const ACH = (()=>{
   SWORDS.forEach((w,i)=>
     add('sw'+i, w.n, 'Armory', `Forge the ${w.n}.`, ()=>S.owned.includes(i)));
 
-  [1,5,10,14,RUNES.length].forEach((v,k)=>
+  [1,5,10,14,RUNE_SLOTS].forEach((v,k)=>
     add('rn'+k, `${v} rune${v===1?'':'s'}`, 'Runes',
       `Bind ${v} rune${v===1?'':'s'} in one refraction.`, ()=>S.runes.length>=v));
 
@@ -754,7 +788,11 @@ function treeEffects(){
 /* derived */
 const D = {};
 function recompute(){
-  const s = {clickMult:1, forgeMult:1, allMult:1, crit:0, critDmg:2, moteRate:1};
+  /* tap: seconds of forge output every strike drags along with it. Fury already
+     did this temporarily via FURY_TAP — making it permanent is the only way a
+     click build can keep up, because flat click multipliers never scale with a
+     forge that is doubling every tier. */
+  const s = {clickMult:1, forgeMult:1, allMult:1, crit:0, critDmg:2, moteRate:1, tap:0, buildCost:1};
   S.runes.forEach(i=>RUNES[i].f(s));
   // sword perks from every owned sword (collection bonus), equipped gives full power
   let forgeBonus=0, allBonus=0;
@@ -780,7 +818,7 @@ function recompute(){
   D.crit      = Math.min(s.crit * T.critMult, 60);
   D.critDmg   = Math.max(1, (s.critDmg + T.critDmgAdd + P.critDmgAdd) * T.critDmgMult);
   D.moteRate  = s.moteRate * T.moteRate * P.moteRate;
-  D.buildCost = T.buildCost;
+  D.buildCost = T.buildCost * (s.buildCost||1);
   D.offRate   = Math.max(T.offRate, P.offRate);
   D.offCap    = Math.max(T.offCap,  P.offCap);
   D.perClick  = SWORDS[S.sword].pow * s.clickMult * P.clickMult * D.allMult * T.clickMult;
@@ -788,11 +826,20 @@ function recompute(){
      the Constant-Click line adding a slice of the rest of the board */
   D.bmult = FORGE.map((_,b)=>Math.pow(2, btCount(b)));
   D.hands = fingerBonus();
-  D.each  = FORGE.map((f,b)=>(f.cps + (b===0 ? D.hands : 0)) * D.bmult[b]);
+  /* Kinship: a building earns more for every unit you own of the one directly
+     below it in the list. Before this the forge was seventeen unrelated income
+     streams and the right move was always "buy whatever is newest" — now the
+     cheap old buildings keep paying, and there is a wrong answer again. */
+  D.kin   = FORGE.map((f,b)=> b===0 ? 1 : 1 + Math.min(S.forge[b-1]||0, KIN_CAP)*KIN_RATE);
+  D.each  = FORGE.map((f,b)=>(f.cps + (b===0 ? D.hands : 0)) * D.bmult[b] * D.kin[b]);
   D.cps   = S.forge.reduce((a,c,b)=>a + c*D.each[b], 0) * D.forgeMult * D.allMult;
   D.frenzy    = Date.now() < S.frenzyUntil ? (S.frenzyPow||2) : 1;
   D.fury      = Date.now() < S.furyUntil   ? (S.furyPow||1)  : 1;
   D.combo     = D.frenzy>1 && D.fury>1;
+  /* the premium for holding both at once — this is what makes chaining worth
+     chasing rather than just a nicer-looking banner */
+  D.comboMult = D.combo ? COMBO_MULT : 1;
+  D.tap = s.tap||0;
   /* the exchange indexes off your best-ever income so it never goes stale.
      One mote spent at par and sold back at par is worth PAR * unit chroma. */
   S.mkt.anchor = Math.max(S.mkt.anchor||0, D.cps, D.perClick*2);
@@ -851,7 +898,9 @@ function paintBlade(){
 }
 function paintHUD(){
   $('chromaNum').textContent = S.god ? '\u221E' : fmt(S.chroma);
-  $('rPer').textContent = fmt(D.perClick*D.frenzy*D.fury + (D.fury>1 ? D.cps*FURY_TAP*D.frenzy : 0));
+  $('rPer').textContent = fmt(D.perClick*D.frenzy*D.fury*D.comboMult
+                              + (D.tap>0 ? D.cps*D.tap*D.frenzy*D.comboMult : 0)
+                              + (D.fury>1 ? D.cps*FURY_TAP*D.frenzy*D.comboMult : 0));
   $('rSec').textContent = fmt(D.cps*(1-drainFrac()));
   $('sTotal').textContent = fmt(S.total);
   /* "Chroma earned" drops to zero on a refraction, so once you've refracted the
@@ -926,6 +975,13 @@ function row({ico,name,desc,perk,price,sub,cls,onclick,disabled}){
   return b;
 }
 
+/* Forge rows show the building's own sprite when sprites.js supplied one, and
+   fall back to the glyph so the shop still renders if the art fails to load. */
+function forgeIco(b){
+  const a = (typeof FORGE_ART!=='undefined') && FORGE_ART[b];
+  return a ? `<div class="ico art"><img src="${a.img}" alt="" draggable="false"></div>`
+           : `<div class="ico"><span class="glyph">${FORGE[b].g}</span></div>`;
+}
 function paintShop(){
   const box=$('shop');
   const keepScroll=box.scrollTop;
@@ -958,6 +1014,7 @@ function paintShop(){
     });
   }
   if(tab==='forge'){
+    let mystery=0;
     /* Upgrades first — this is the shelf that keeps the shop from ever being
        empty, so it wants to be the first thing you see when you open the tab. */
     let ups=0;
@@ -982,7 +1039,7 @@ function paintShop(){
         if(S.forge[b] < t.at) return;                        // not earned yet
         const c=btCost(b,ti), afford=S.chroma>=c; ups++;
         box.appendChild(row({
-          ico:`<div class="ico"><span class="glyph">${f.g}</span></div>`,
+          ico:forgeIco(b),
           name:`${t.n} ${f.n}`,
           desc:`Your ${f.n}s work twice as hard. Unlocked by owning ${t.at}.`,
           perk:`⟡ ${f.n} output ×2 — now ×${Math.pow(2,btCount(b)+1)} in total`,
@@ -1003,37 +1060,64 @@ function paintShop(){
     FORGE.forEach((f,i)=>{
       const c=forgeCost(i), afford=S.chroma>=c;
       const visible = i===0 || S.forge[i-1]>0 || S.total>=FORGE[i].cost*.35;
-      if(!visible) return;
+      /* Locked buildings used to vanish, so a new player saw one row and no
+         reason to believe there were sixteen more. Show the next few as
+         silhouettes instead — the ladder is the motivation. Capped, because a
+         wall of seventeen mystery rows on a phone is noise, not a tease. */
+      if(!visible){
+        if(mystery >= MYSTERY_SHOWN) return;
+        mystery++;
+        const a=(typeof FORGE_ART!=='undefined') && FORGE_ART[i];
+        box.appendChild(row({
+          ico: a ? `<div class="ico art locked"><img src="${a.img}" alt="" draggable="false"></div>`
+                 : `<div class="ico locked"><span class="glyph">?</span></div>`,
+          name:'<span class="mystery">? ? ?</span>',
+          desc:'Something waits here. Keep earning.',
+          perk:`⟡ Unlocks near ${fmt(FORGE[i].cost*.35)} chroma earned`,
+          price:fmt(FORGE[i].cost), sub:'locked',
+          cls:'locked mystery-row', disabled:true, onclick:()=>{}
+        }));
+        return;
+      }
       const each=D.each[i]*D.forgeMult*D.allMult, mine=each*S.forge[i];
       const share=D.cps>0?Math.round(mine/D.cps*100):0;
       const tiers=btCount(i);
       box.appendChild(row({
-        ico:`<div class="ico"><span class="glyph">${f.g}</span></div>`,
+        ico:forgeIco(i),
         name:f.n+(S.forge[i]?` <span style="color:var(--cyan);font-family:var(--mono);font-size:12px">×${S.forge[i]}</span>`:'')
              +(tiers?` <span style="color:var(--gold);font-family:var(--mono);font-size:11px">▲${tiers}</span>`:''),
         desc:f.d,
-        perk:`⟡ ${fmt(each)} chroma/s each`+(S.forge[i]?` · yours make ${fmt(mine)}/s, ${share}% of your income`:''),
+        perk:`⟡ ${fmt(each)} chroma/s each`
+             +(S.forge[i]?` · yours make ${fmt(mine)}/s, ${share}% of your income`:'')
+             +(i>0 ? `\n⟡ +${Math.round((D.kin[i]-1)*100)}% from your ${S.forge[i-1]||0} ${FORGE[i-1].n}${(S.forge[i-1]||0)===1?'':'s'}`
+                    +((S.forge[i-1]||0)>=KIN_CAP?' (maxed)':'') : ''),
         price:fmt(c), sub:'buy one',
         cls:afford?'':'locked', disabled:!afford,
         onclick:()=>{ const cc=forgeCost(i); if(S.chroma<cc)return;
           S.chroma-=cc; S.forge[i]++; SFX.buy(); recompute(); paintHUD(); paintShop(); checkAch(); markDirty(); }
       }));
     });
-    if(!box.children.length) box.innerHTML='<div class="empty">The forge is cold.<br>Earn 30 chroma to buy your first whetstone.</div>';
+    if(!box.children.length) box.innerHTML='<div class="empty">The forge is cold.<br>Earn 30 chroma to buy your first cauldron.</div>';
   }
   if(tab==='runes'){
     let shown=0;
     RUNES.forEach((r,i)=>{
       if(S.runes.includes(i)) return;
+      if(r.fork && forkTaken(r.fork)) return;      // the other side was chosen
       if(S.total < r.cost*.25) return;
       shown++;
       const afford=S.chroma>=r.cost;
+      const other = r.fork ? RUNES[forkPartner(i)] : null;
       box.appendChild(row({
-        ico:`<div class="ico"><span class="glyph">⟡</span></div>`,
-        name:r.n, desc:r.d, perk:'⟡ Affects: '+r.tag, price:fmt(r.cost), sub:'one-time, permanent',
+        ico:`<div class="ico"><span class="glyph">${r.fork?'⟠':'⟡'}</span></div>`,
+        name:r.n+(r.fork?` <span style="color:var(--gold);font-size:11px">choice</span>`:''),
+        desc:r.d, perk:'⟡ Affects: '+r.tag
+             +(other?`\n⟠ Binding this closes ${other.n} until you refract`:''),
+        price:fmt(r.cost), sub:r.fork?'one-time, exclusive':'one-time, permanent',
         cls:afford?'':'locked', disabled:!afford,
         onclick:()=>{ if(S.chroma<r.cost)return; S.chroma-=r.cost; S.runes.push(i); SFX.rune();
-          toast(`Rune bound — ${r.d}`); recompute(); paintHUD(); paintShop(); markDirty(); }
+          toast(r.fork ? `${r.n} bound — ${RUNES[forkPartner(i)].n} is closed`
+                       : `Rune bound — ${r.d}`); recompute(); paintHUD(); paintShop(); markDirty(); }
       }));
     });
     if(!shown) box.innerHTML=`<div class="empty">No runes within reach yet.<br>${S.runes.length} bound so far — keep striking.</div>`;
@@ -1402,10 +1486,11 @@ function strike(x,y){
     if(r>(S.bestCps||0)) S.bestCps=r;
   }
   const isCrit = Math.random()*100 < D.crit;
-  let gain = D.perClick * D.frenzy * D.fury;
+  let gain = D.perClick * D.frenzy * D.fury * D.comboMult;
+  if(D.tap>0) gain += D.cps * D.tap * D.frenzy * D.comboMult;
   /* a raging blade siphons the forge — this is what keeps fury worth chasing
      once buildings have left raw click power far behind */
-  if(D.fury>1) gain += D.cps * FURY_TAP * D.frenzy;
+  if(D.fury>1) gain += D.cps * FURY_TAP * D.frenzy * D.comboMult;
   gain *= (isCrit ? D.critDmg : 1);
   S.chroma+=gain; S.total+=gain; S.clicks++; if(isCrit) S.crits++;
 
@@ -1471,10 +1556,17 @@ orbEl.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.prevent
    the per-tick chance climbs with the 5th power of elapsed time, so spawns land
    heavily in the back half of the 5-15 minute window. On screen for 13 seconds. */
 const MOTE_MIN=300e3, MOTE_MAX=900e3, MOTE_LIFE=13000, MOTE_TICK=250;
+/* Catching a mote while a buff is already burning pulls the next one in close,
+   so a lucky proc becomes something you can ride into a second one. This is the
+   whole point: the buffs already multiply together, but nothing let you set that
+   up on purpose. CHAIN_CUT is how much of the normal wait is left. */
+const CHAIN_CUT=.35, CHAIN_KEEP=3;   // three chained motes before it resets
+const COMBO_MULT=1.5;                // frenzy and fury overlapping pay a premium
+let chainLeft=0;
 let moteSince=Date.now(), moteLive=false;
 
 function moteWindow(){
-  const r = D.moteRate||1;                 // Mote Magnetism halves both ends
+  const r = (D.moteRate||1) * (chainLeft>0 ? CHAIN_CUT : 1);
   return [MOTE_MIN*r, MOTE_MAX*r];
 }
 function moteTick(){
@@ -1526,6 +1618,13 @@ function spawnMote(flavour){
     S.moteBank+=banked;
     const wasFrenzied = Date.now() < S.frenzyUntil;
     const wasFurious  = Date.now() < S.furyUntil;
+    /* caught it hot: pull the next mote in and let the player keep the run
+       going. Caught it cold: the chain is over. */
+    if(wasFrenzied || wasFurious){
+      if(chainLeft<=0) chainLeft=CHAIN_KEEP;
+      else chainLeft--;
+      toast(chainLeft>0 ? `Chained — the next mote is close` : `The chain runs out`);
+    } else chainLeft=0;
 
     if(ember){
       /* Blade fury: short, violent, and it multiplies with an active frenzy */
@@ -1568,6 +1667,11 @@ function clampMote(b){
 }
 
 /* the fury banner, and the moment both are running at once */
+/* +2% per unit of the building below, up to 100 of them — so a fully stocked
+   lower tier triples the one above it. Big enough to change what you buy,
+   small enough that ignoring it isn't fatal. */
+const KIN_RATE=.02, KIN_CAP=100;
+const MYSTERY_SHOWN=3;   // how many locked buildings to tease at once
 const FURY_POW=12, FURY_MS=12000, FURY_TAP=.6;  // each strike also drinks 0.6s of forge output
 function startBanner(cls, ms){
   document.body.classList.add('furious');
@@ -1577,7 +1681,7 @@ function startBanner(cls, ms){
 }
 function announceCombo(){
   recompute();
-  const mult=(D.frenzy*D.fury).toFixed(0);
+  const mult=(D.frenzy*D.fury*D.comboMult).toFixed(0);
   document.body.classList.add('combo');
   setTimeout(()=>document.body.classList.remove('combo'), 4000);
   const c=document.createElement('div'); c.className='comboflash';
@@ -1892,7 +1996,7 @@ async function load(){
     if(!S.owned.length) S.owned=[0];
     if(!(S.sword>=0&&S.sword<SWORDS.length)||!S.owned.includes(S.sword)) S.sword=S.owned[S.owned.length-1];
     S.runes=(o.runes||[]).filter(i=>i>=0&&i<RUNES.length);
-    S.frenzyUntil=0;
+    S.frenzyUntil=0; chainLeft=0;
 
     /* the forge keeps working while you're gone — Void decides how well */
     recompute();
@@ -1968,7 +2072,12 @@ const Dev = (()=>{
     x1000(){ grant(Math.max(S.chroma,1000)*999); },
     swords(){ S.owned=SWORDS.map((_,i)=>i); S.sword=SWORDS.length-1;
               paintBlade(); SFX.sword(); toast('Every sword unlocked'); },
-    runes(){ S.runes=RUNES.map((_,i)=>i); SFX.rune(); toast('Every rune bound'); },
+    runes(){ const seen=new Set();
+      S.runes=RUNES.map((r,i)=>({r,i}))
+        .filter(({r})=>{ if(!r.fork) return true;
+          if(seen.has(r.fork)) return false; seen.add(r.fork); return true; })
+        .map(({i})=>i);
+      SFX.rune(); toast('Every rune bound — first side of each choice'); },
     forge(){ S.forge=S.forge.map(n=>n+10); SFX.buy(); toast('+10 of every forge building'); },
     frenzy(){ S.frenzyPow=+(2+((D.tree&&D.tree.frenzyPow)||0)).toFixed(1);
               S.frenzyUntil=Date.now()+60000; SFX.frenzy(); toast(`Frenzy — strikes ×${S.frenzyPow} for 60s`);
